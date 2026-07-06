@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell, screen, dialog } from 'electron'
+import { app, BrowserWindow, screen, dialog, session } from 'electron'
 import path from 'path'
 import fs from 'fs'
 import { getDatabase, closeDatabase } from './database'
@@ -7,6 +7,7 @@ import { startBriefingLoop, stopBriefingLoop } from './meeting-briefing'
 import { startGoogleContactsAutoSync, stopGoogleContactsAutoSync } from './google-contacts-sync'
 import { startMicrosoftContactsAutoSync, stopMicrosoftContactsAutoSync } from './microsoft-contacts-sync'
 import { autoUpdater } from 'electron-updater'
+import { safeOpenExternal } from './url-validator'
 
 // Single instance lock — prevent duplicate app windows
 const gotTheLock = app.requestSingleInstanceLock()
@@ -97,8 +98,11 @@ function createWindow(): void {
       preload: path.join(__dirname, '../preload/index.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      // sandbox: false required — better-sqlite3 native module loaded via preload
       sandbox: false,
-      devTools: !app.isPackaged
+      devTools: !app.isPackaged,
+      // Prevent renderer from opening new windows or navigating
+      navigateOnDragDrop: false,
     }
   })
 
@@ -117,10 +121,20 @@ function createWindow(): void {
   mainWindow.on('unmaximize', saveWindowState)
   mainWindow.on('close', saveWindowState)
 
-  // Open external links in the default browser
+  // Open external links in the default browser (validated)
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url)
+    safeOpenExternal(url)
     return { action: 'deny' }
+  })
+
+  // Prevent navigation away from the app origin
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    // Allow dev server reloads and file:// loads
+    const rendererUrl = process.env.ELECTRON_RENDERER_URL
+    if (rendererUrl && url.startsWith(rendererUrl)) return
+    if (url.startsWith('file://')) return
+    event.preventDefault()
+    console.warn('[Security] Blocked navigation to:', url)
   })
 
   // Handle renderer crashes gracefully
@@ -147,6 +161,32 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+  // --- Content Security Policy ---
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    const csp = [
+      "default-src 'self'",
+      // Inline styles needed by React, Tailwind, and Leaflet
+      "style-src 'self' 'unsafe-inline'",
+      // Leaflet tile images + data URIs for inline icons
+      "img-src 'self' data: https://*.tile.openstreetmap.org https://*.basemaps.cartocdn.com",
+      // API connections: Anthropic, Google, Microsoft, Supabase, Leaflet tiles
+      "connect-src 'self' https://api.anthropic.com https://*.googleapis.com https://graph.microsoft.com https://login.microsoftonline.com https://*.supabase.co https://*.tile.openstreetmap.org https://*.basemaps.cartocdn.com",
+      // Fonts
+      "font-src 'self'",
+      // No eval, no plugins, no frames
+      "script-src 'self'",
+      "object-src 'none'",
+      "frame-src 'none'",
+    ].join('; ')
+
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': [csp],
+      },
+    })
+  })
+
   // Initialize database
   getDatabase()
 

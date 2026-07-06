@@ -1,6 +1,7 @@
 import { ipcMain, dialog, app, BrowserWindow, shell } from 'electron'
 import { getDatabase, getDatabasePath } from './database'
 import { getSecret as getSecretValue, setSecret as setSecretValue, deleteSecret as deleteSecretValue } from './secure-store'
+import { safeOpenExternal } from './url-validator'
 import {
   startGoogleAuth,
   disconnectGoogle,
@@ -31,11 +32,17 @@ import { normaliseContact } from './contact-normaliser'
 import fs from 'fs'
 import path from 'path'
 
-// Safe IPC handler wrapper — catches errors and returns { error: string } instead of crashing
+// Safe IPC handler wrapper — catches errors, validates sender
 function safeHandle(channel: string, handler: (...args: unknown[]) => unknown): void {
-  ipcMain.handle(channel, async (...args) => {
+  ipcMain.handle(channel, async (event, ...rest) => {
+    // Sender check: only accept messages from our main window
+    const mainWin = BrowserWindow.getAllWindows()[0]
+    if (mainWin && event.sender.id !== mainWin.webContents.id) {
+      console.warn(`[Security] Blocked IPC "${channel}" from unknown sender (id=${event.sender.id})`)
+      return { error: 'unauthorized' }
+    }
     try {
-      return await handler(...args)
+      return await handler(event, ...rest)
     } catch (err) {
       console.error(`[IPC ${channel}]`, err)
       return { error: err instanceof Error ? err.message : 'Unknown error' }
@@ -460,8 +467,15 @@ export function registerIpcHandlers(): void {
   })
 
   safeHandle('db:attachments:openFile', (_event, filePath: string) => {
-    if (fs.existsSync(filePath)) {
-      shell.openPath(filePath)
+    // Validate path is within userData to prevent arbitrary file access
+    const resolved = path.resolve(filePath)
+    const userDataDir = app.getPath('userData')
+    if (!resolved.startsWith(userDataDir)) {
+      console.warn('[Security] Blocked openPath outside userData:', resolved)
+      return
+    }
+    if (fs.existsSync(resolved)) {
+      shell.openPath(resolved)
     }
   })
 
@@ -1176,7 +1190,7 @@ export function registerIpcHandlers(): void {
 
       if (data.url) {
         // Open Stripe checkout in default browser
-        shell.openExternal(data.url)
+        safeOpenExternal(data.url)
         return { success: true, url: data.url }
       }
 
@@ -1220,7 +1234,7 @@ export function registerIpcHandlers(): void {
       || process.env.VITE_SUPABASE_URL || ''
 
     if (supabaseUrl) {
-      shell.openExternal(`${supabaseUrl}/functions/v1/customer-portal`)
+      safeOpenExternal(`${supabaseUrl}/functions/v1/customer-portal`)
     }
     return { success: true }
   })
