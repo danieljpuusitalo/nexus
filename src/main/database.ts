@@ -3,6 +3,7 @@ import { app, net } from 'electron'
 import path from 'path'
 import fs from 'fs'
 import { initSecretStore, migrateSecretsFromSettings } from './secure-store'
+import { autoBackupOnStart, preMigrationBackup } from './backup'
 
 let db: Database.Database
 
@@ -14,9 +15,11 @@ export function getDatabase(): Database.Database {
     db.pragma('journal_mode = WAL')
     db.pragma('foreign_keys = ON')
     initializeSchema()
+    preMigrationBackup(db)
     migrateSchema()
     initSecretStore(db)
     migrateSecretsFromSettings(db)
+    autoBackupOnStart(db)
     if (!app.isPackaged) seedDevData()
   }
   return db

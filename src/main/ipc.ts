@@ -2,6 +2,7 @@ import { ipcMain, dialog, app, BrowserWindow, shell } from 'electron'
 import { getDatabase, getDatabasePath } from './database'
 import { getSecret as getSecretValue, setSecret as setSecretValue, deleteSecret as deleteSecretValue } from './secure-store'
 import { safeOpenExternal } from './url-validator'
+import { createBackup as backupCreateBackup, listBackups as backupListBackups, restoreFromBackup as backupRestoreFromBackup } from './backup'
 import {
   startGoogleAuth,
   disconnectGoogle,
@@ -694,6 +695,119 @@ export function registerIpcHandlers(): void {
     return { success: true, message: `Exported ${contacts.length} contacts with tags and groups` }
   })
 
+  // vCard export
+  safeHandle('db:export:vcard', async () => {
+    const contacts = db.prepare('SELECT * FROM contacts WHERE deleted_at IS NULL ORDER BY first_name, last_name').all() as Record<string, unknown>[]
+    if (contacts.length === 0) return { success: false, message: 'No contacts to export' }
+
+    const vcards = contacts.map(c => {
+      const lines = ['BEGIN:VCARD', 'VERSION:3.0']
+      lines.push(`N:${c.last_name || ''};${c.first_name || ''};;;`)
+      lines.push(`FN:${[c.first_name, c.last_name].filter(Boolean).join(' ')}`)
+      if (c.email) lines.push(`EMAIL:${c.email}`)
+      if (c.phone) lines.push(`TEL:${c.phone}`)
+      if (c.company) lines.push(`ORG:${c.company}`)
+      if (c.job_title) lines.push(`TITLE:${c.job_title}`)
+      if (c.location) lines.push(`ADR:;;${c.location};;;;`)
+      if (c.birthday) lines.push(`BDAY:${String(c.birthday).replace(/-/g, '')}`)
+      if (c.linkedin_url) lines.push(`URL:${c.linkedin_url}`)
+      if (c.notes) lines.push(`NOTE:${String(c.notes).replace(/\n/g, '\\n')}`)
+      lines.push('END:VCARD')
+      return lines.join('\r\n')
+    })
+
+    const result = await dialog.showSaveDialog({
+      title: 'Export Contacts (vCard)',
+      defaultPath: 'nexus-contacts.vcf',
+      filters: [{ name: 'vCard', extensions: ['vcf'] }]
+    })
+    if (result.canceled || !result.filePath) return { success: false, message: 'Cancelled' }
+    fs.writeFileSync(result.filePath, vcards.join('\r\n'), 'utf8')
+    return { success: true, message: `Exported ${contacts.length} contacts as vCard` }
+  })
+
+  // Full portfolio export — CSV + vCard + interactions CSV + reminders CSV
+  safeHandle('db:export:full', async () => {
+    const result = await dialog.showOpenDialog({
+      title: 'Choose export folder',
+      properties: ['openDirectory', 'createDirectory']
+    })
+    if (result.canceled || !result.filePaths.length) return { success: false, message: 'Cancelled' }
+    const exportDir = result.filePaths[0]
+
+    const contacts = db.prepare('SELECT * FROM contacts WHERE deleted_at IS NULL ORDER BY first_name, last_name').all() as Record<string, unknown>[]
+    if (contacts.length === 0) return { success: false, message: 'No contacts to export' }
+
+    // Contacts CSV (with tags/groups)
+    const tagRows = db.prepare('SELECT ct.contact_id, GROUP_CONCAT(t.name, "; ") as tags FROM contact_tags ct JOIN tags t ON ct.tag_id = t.id GROUP BY ct.contact_id').all() as { contact_id: number; tags: string }[]
+    const groupRows = db.prepare('SELECT cg.contact_id, GROUP_CONCAT(g.name, "; ") as groups FROM contact_groups cg JOIN groups g ON cg.group_id = g.id GROUP BY cg.contact_id').all() as { contact_id: number; groups: string }[]
+    const tagMap = new Map(tagRows.map(r => [r.contact_id, r.tags]))
+    const groupMap = new Map(groupRows.map(r => [r.contact_id, r.groups]))
+
+    const contactHeaders = ['first_name', 'last_name', 'email', 'phone', 'company', 'job_title', 'location', 'birthday', 'notes', 'how_we_met', 'linkedin_url', 'tags', 'groups', 'keep_in_touch_days', 'created_at']
+    const contactCsv = [contactHeaders.join(',')]
+    for (const c of contacts) {
+      const row = contactHeaders.map(h => {
+        let val: string
+        if (h === 'tags') val = tagMap.get(c.id as number) || ''
+        else if (h === 'groups') val = groupMap.get(c.id as number) || ''
+        else val = String(c[h] || '')
+        return `"${val.replace(/"/g, '""')}"`
+      })
+      contactCsv.push(row.join(','))
+    }
+    fs.writeFileSync(path.join(exportDir, 'contacts.csv'), contactCsv.join('\n'), 'utf8')
+
+    // vCard
+    const vcards = contacts.map(c => {
+      const lines = ['BEGIN:VCARD', 'VERSION:3.0']
+      lines.push(`N:${c.last_name || ''};${c.first_name || ''};;;`)
+      lines.push(`FN:${[c.first_name, c.last_name].filter(Boolean).join(' ')}`)
+      if (c.email) lines.push(`EMAIL:${c.email}`)
+      if (c.phone) lines.push(`TEL:${c.phone}`)
+      if (c.company) lines.push(`ORG:${c.company}`)
+      if (c.job_title) lines.push(`TITLE:${c.job_title}`)
+      if (c.birthday) lines.push(`BDAY:${String(c.birthday).replace(/-/g, '')}`)
+      lines.push('END:VCARD')
+      return lines.join('\r\n')
+    })
+    fs.writeFileSync(path.join(exportDir, 'contacts.vcf'), vcards.join('\r\n'), 'utf8')
+
+    // Interactions CSV
+    const interactions = db.prepare(`
+      SELECT i.type, i.description, i.date, c.first_name, c.last_name
+      FROM interactions i JOIN contacts c ON i.contact_id = c.id
+      WHERE c.deleted_at IS NULL ORDER BY i.date DESC
+    `).all() as Record<string, unknown>[]
+    if (interactions.length > 0) {
+      const intHeaders = ['date', 'first_name', 'last_name', 'type', 'description']
+      const intCsv = [intHeaders.join(',')]
+      for (const i of interactions) {
+        const row = intHeaders.map(h => `"${String(i[h] || '').replace(/"/g, '""')}"`)
+        intCsv.push(row.join(','))
+      }
+      fs.writeFileSync(path.join(exportDir, 'interactions.csv'), intCsv.join('\n'), 'utf8')
+    }
+
+    // Reminders CSV
+    const reminders = db.prepare(`
+      SELECT r.title, r.due_date, r.completed, r.repeat, c.first_name, c.last_name
+      FROM reminders r JOIN contacts c ON r.contact_id = c.id
+      WHERE c.deleted_at IS NULL ORDER BY r.due_date
+    `).all() as Record<string, unknown>[]
+    if (reminders.length > 0) {
+      const remHeaders = ['due_date', 'first_name', 'last_name', 'title', 'completed', 'repeat']
+      const remCsv = [remHeaders.join(',')]
+      for (const r of reminders) {
+        const row = remHeaders.map(h => `"${String(r[h] || '').replace(/"/g, '""')}"`)
+        remCsv.push(row.join(','))
+      }
+      fs.writeFileSync(path.join(exportDir, 'reminders.csv'), remCsv.join('\n'), 'utf8')
+    }
+
+    return { success: true, message: `Exported ${contacts.length} contacts (CSV + vCard), ${interactions.length} interactions, ${reminders.length} reminders` }
+  })
+
   safeHandle('db:import:selectCsv', async () => {
     const result = await dialog.showOpenDialog({
       title: 'Import Data',
@@ -843,16 +957,29 @@ export function registerIpcHandlers(): void {
     return { imported, skipped }
   })
 
-  safeHandle('db:backup', async () => {
-    const dbPath = getDatabasePath()
-    const result = await dialog.showSaveDialog({
-      title: 'Backup Database',
-      defaultPath: `nexus-backup-${new Date().toISOString().split('T')[0]}.db`,
-      filters: [{ name: 'SQLite Database', extensions: ['db'] }]
-    })
-    if (result.canceled || !result.filePath) return { success: false }
-    fs.copyFileSync(dbPath, result.filePath)
-    return { success: true, path: result.filePath }
+  safeHandle('db:backup', () => {
+    const result = backupCreateBackup(db)
+    return { success: !!result, path: result }
+  })
+
+  safeHandle('db:backup:list', () => {
+    return backupListBackups()
+  })
+
+  safeHandle('db:backup:restore', async (_event, backupPath: string) => {
+    // Validate the path is within our backup directory
+    const backupDir = path.join(app.getPath('userData'), 'backups')
+    const resolved = path.resolve(backupPath)
+    if (!resolved.startsWith(backupDir)) {
+      return { success: false, error: 'Invalid backup path.' }
+    }
+    const result = backupRestoreFromBackup(db, resolved)
+    if (result.success) {
+      // App needs restart after restore
+      app.relaunch()
+      app.exit(0)
+    }
+    return result
   })
 
   safeHandle('db:resetDatabase', () => {
