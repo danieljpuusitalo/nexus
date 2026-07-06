@@ -19,6 +19,7 @@ import MergeFix from './pages/MergeFix'
 import Workspace from './pages/Workspace'
 import Welcome from './pages/Welcome'
 import NetworkSetup from './pages/NetworkSetup'
+import NetworkReveal from './pages/NetworkReveal'
 import Auth from './pages/Auth'
 
 // Lazy-load heavy pages (Leaflet, D3, AI)
@@ -103,6 +104,7 @@ function AuthGate() {
         <Routes>
           <Route path="/welcome" element={<Welcome />} />
           <Route path="/network-setup" element={<NetworkSetup />} />
+          <Route path="/network-reveal" element={<NetworkReveal />} />
           <Route element={<AppLayout />}>
             <Route path="/" element={<Dashboard />} />
             <Route path="/workspace" element={<Workspace />} />

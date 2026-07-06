@@ -61,10 +61,11 @@ export default function CommandPalette({ open, onClose }: Props) {
       { id: 'action-copilot', label: 'Open Copilot', sublabel: 'AI', section: 'Actions', action: () => { onClose(); navigate('/copilot') } },
       { id: 'action-kit', label: 'Keep In Touch', section: 'Actions', action: () => { onClose(); navigate('/keep-in-touch') } },
       { id: 'action-quickaction', label: 'Quick Action', section: 'Actions', action: () => { onClose(); navigate('/quick-action') } },
-      { id: 'action-import', label: 'Import Contacts', section: 'Actions', action: () => { onClose(); navigate('/import') } },
+      { id: 'action-import', label: 'Start an import', section: 'Actions', action: () => { onClose(); navigate('/import') } },
+      { id: 'action-backup', label: 'Back up now', sublabel: 'Safety copy', section: 'Actions', action: () => { window.api.data.backup(); onClose() } },
       { id: 'action-map', label: 'Open Map', sublabel: 'Locations', section: 'Actions', action: () => { onClose(); navigate('/map') } },
-      { id: 'action-locations', label: 'Manage Locations', section: 'Actions', action: () => { onClose(); navigate('/locations') } },
-      { id: 'action-refer', label: 'Refer a Friend', sublabel: 'Earn credits', section: 'Actions', action: () => { onClose(); navigate('/refer') } },
+      { id: 'action-settings', label: 'Settings', section: 'Actions', action: () => { onClose(); navigate('/settings') } },
+      { id: 'action-workspace', label: 'Workspace', section: 'Actions', action: () => { onClose(); navigate('/workspace') } },
     ]
 
     // Contacts
