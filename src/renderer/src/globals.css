@@ -4,12 +4,12 @@
 
 @layer base {
   * {
-    @apply border-zinc-800;
+    @apply border-zinc-200 dark:border-zinc-800;
   }
 
   body {
-    @apply overflow-hidden select-none;
-    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    @apply overflow-hidden select-none bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100;
+    font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
   }
 
   /* Scrollbar */
@@ -20,14 +20,14 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    @apply bg-zinc-700 rounded-full;
+    @apply bg-zinc-300 dark:bg-zinc-700 rounded-full;
   }
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-zinc-600;
+    @apply bg-zinc-400 dark:bg-zinc-600;
   }
 
   ::selection {
-    @apply bg-violet-500/30 text-white;
+    @apply bg-violet-500/30 text-zinc-900 dark:text-white;
   }
 
   input, textarea, select {
@@ -40,7 +40,13 @@
   input:focus-visible,
   textarea:focus-visible,
   select:focus-visible {
-    @apply outline-none ring-2 ring-violet-500/50 ring-offset-1 ring-offset-zinc-950;
+    @apply outline-none ring-2 ring-violet-500/50 ring-offset-1 ring-offset-white dark:ring-offset-zinc-950;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply bg-white/70 dark:bg-zinc-900/50 backdrop-blur border border-zinc-200 dark:border-zinc-800/60 shadow-sm rounded-2xl;
   }
 }
 
@@ -73,13 +79,22 @@
   animation: page-enter 0.15s ease-out;
 }
 
+/* Toast slide-up */
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-slide-up {
+  animation: slide-up 0.2s ease-out;
+}
+
 /* Loading skeleton shimmer */
 @keyframes shimmer {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
 }
 .skeleton {
-  @apply bg-zinc-800/60 rounded;
+  @apply bg-zinc-200/60 dark:bg-zinc-800/60 rounded;
   background: linear-gradient(90deg, transparent 25%, rgba(255,255,255,0.04) 50%, transparent 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
