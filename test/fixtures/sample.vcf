@@ -1,0 +1,15 @@
+BEGIN:VCARD
+VERSION:3.0
+N:Doe;Jane;;;
+FN:Jane Doe
+EMAIL:jane@example.com
+TEL:+31612345678
+ORG:Acme Corp
+TITLE:Engineer
+END:VCARD
+BEGIN:VCARD
+VERSION:3.0
+N:Smith;Bob;;;
+FN:Bob Smith
+EMAIL:bob@test.org
+END:VCARD
