@@ -776,8 +776,15 @@ export default function Import() {
         <div className="max-w-lg mx-auto mt-16">
           <ResultsScreen
             result={importResult}
-            onViewContacts={() => { setImportResult(null); navigate('/contacts') }}
-            onDone={() => setImportResult(null)}
+            onViewContacts={async () => {
+              setImportResult(null)
+              const shown = await window.api.settings.get('network_reveal_shown') as string | null
+              if (!shown && importResult.newContacts > 0) { navigate('/network-reveal') } else { navigate('/contacts') }
+            }}
+            onDone={async () => {
+              const shown = await window.api.settings.get('network_reveal_shown') as string | null
+              if (!shown && importResult.newContacts > 0) { navigate('/network-reveal') } else { setImportResult(null) }
+            }}
           />
         </div>
       </div>

@@ -55,6 +55,14 @@ export default function Contacts() {
   const [filterTags, setFilterTags] = useState<number[]>([])
   const [sortBy, setSortBy] = useState<SortKey>('name-asc')
 
+  // Density
+  const [compact, setCompact] = useState(() => localStorage.getItem('nexus-density') === 'compact')
+  function toggleDensity() {
+    const next = !compact
+    setCompact(next)
+    localStorage.setItem('nexus-density', next ? 'compact' : 'comfortable')
+  }
+
   // Bulk select
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [showBulkFreq, setShowBulkFreq] = useState(false)
@@ -496,6 +504,17 @@ export default function Contacts() {
             <option value="company">Company</option>
           </select>
 
+          <button onClick={toggleDensity}
+            className="w-7 h-7 flex items-center justify-center rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 transition-colors"
+            title={compact ? 'Comfortable view' : 'Compact view'}>
+            <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+              {compact
+                ? <><line x1="2" y1="3" x2="14" y2="3" /><line x1="2" y1="7" x2="14" y2="7" /><line x1="2" y1="11" x2="14" y2="11" /></>
+                : <><line x1="2" y1="3" x2="14" y2="3" /><line x1="2" y1="8" x2="14" y2="8" /><line x1="2" y1="13" x2="14" y2="13" /></>
+              }
+            </svg>
+          </button>
+
           {hasFilters && (
             <>
               <button
@@ -635,7 +654,7 @@ export default function Contacts() {
               return (
                 <div
                   key={contact.id}
-                  className={`flex items-center gap-4 px-5 py-3.5 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors group ${isSelected ? 'bg-violet-50/50 dark:bg-violet-900/10' : ''}`}
+                  className={`flex items-center gap-4 px-5 ${compact ? 'py-2' : 'py-3.5'} hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors group ${isSelected ? 'bg-violet-50/50 dark:bg-violet-900/10' : ''}`}
                 >
                   {/* Checkbox */}
                   <input type="checkbox" checked={isSelected} onChange={() => toggleSelect(contact.id)}
@@ -715,6 +734,14 @@ export default function Contacts() {
                       <path d="M6 3l5 5-5 5" />
                     </svg>
                   </button>
+
+                  {/* Inline hover actions */}
+                  <div className="hidden group-hover:flex items-center gap-1 flex-shrink-0">
+                    <button onClick={async (e) => { e.stopPropagation(); await window.api.interactions.create({ contact_id: contact.id, type: 'call', description: `Call with ${contact.first_name}`, date: new Date().toISOString().split('T')[0] }); toast('Call logged') }}
+                      className="w-6 h-6 flex items-center justify-center rounded text-[11px] text-zinc-400 hover:text-violet-500 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors" title="Log call">{'\u{1F4DE}'}</button>
+                    <button onClick={async (e) => { e.stopPropagation(); await window.api.interactions.create({ contact_id: contact.id, type: 'meeting', description: `Met ${contact.first_name}`, date: new Date().toISOString().split('T')[0] }); toast('Meeting logged') }}
+                      className="w-6 h-6 flex items-center justify-center rounded text-[11px] text-zinc-400 hover:text-violet-500 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors" title="Log meeting">{'\u{1F91D}'}</button>
+                  </div>
                 </div>
               )
             })}
