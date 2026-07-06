@@ -75,6 +75,14 @@ This remains a v2 option if demand or use-case warrants it.
 | Tag suggestion validation | Output strictly validated: array of ≤5 strings, each ≤40 chars, no control chars |
 | No auto-writes | AI output never triggers DB writes, IPC calls, or link-opens without user confirmation |
 
+## Cloud sync (Supabase RLS)
+
+All 14 synced tables have Row Level Security enabled with `user_id = auth.uid()` policies for ALL operations (SELECT, INSERT, UPDATE, DELETE). Cross-user data access is impossible at the database level.
+
+- **Extension** uses only the anon key + authenticated user session (no service_role key)
+- **Subscriptions table** is read-only for users; mutations restricted to service_role (Edge Functions only)
+- **Audit date:** 2026-07-06. Evidence: all migrations in `supabase/migrations/` reviewed.
+
 ## Telemetry
 
 Nexus contains **no telemetry, analytics, or crash reporting** in the desktop app. Logs are written to a local file only. The user chooses whether to share them.
