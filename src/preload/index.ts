@@ -71,6 +71,7 @@ const api = {
   interactions: {
     getAll: () => ipcRenderer.invoke('db:interactions:getAll'),
     getForContact: (contactId: number) => ipcRenderer.invoke('db:interactions:getForContact', contactId),
+    getLastDates: () => ipcRenderer.invoke('db:interactions:getLastDates'),
     create: (interaction: Record<string, unknown>) => ipcRenderer.invoke('db:interactions:create', interaction),
     delete: (id: number) => ipcRenderer.invoke('db:interactions:delete', id),
     getLastForContacts: () => ipcRenderer.invoke('db:interactions:getLastForContacts'),
@@ -172,7 +173,8 @@ const api = {
 
   // App info
   app: {
-    getVersion: () => ipcRenderer.invoke('app:getVersion')
+    getVersion: () => ipcRenderer.invoke('app:getVersion'),
+    showLogsFolder: () => ipcRenderer.invoke('app:showLogsFolder')
   },
 
   // Google Integration

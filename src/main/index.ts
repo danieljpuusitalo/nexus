@@ -1,6 +1,7 @@
 import { app, BrowserWindow, screen, dialog, session } from 'electron'
 import path from 'path'
 import fs from 'fs'
+import log from 'electron-log/main'
 import { getDatabase, closeDatabase } from './database'
 import { registerIpcHandlers } from './ipc'
 import { startBriefingLoop, stopBriefingLoop } from './meeting-briefing'
@@ -186,6 +187,21 @@ app.whenReady().then(() => {
       },
     })
   })
+
+  // --- Logging ---
+  log.initialize()
+  log.transports.file.maxSize = 5 * 1024 * 1024 // 5MB per log file
+  log.transports.file.format = '{y}-{m}-{d} {h}:{i}:{s} [{level}] {text}'
+
+  // Global error handlers
+  process.on('uncaughtException', (error) => {
+    log.error('[uncaughtException]', error)
+  })
+  process.on('unhandledRejection', (reason) => {
+    log.error('[unhandledRejection]', reason)
+  })
+
+  log.info('Nexus starting...')
 
   // Initialize database
   getDatabase()

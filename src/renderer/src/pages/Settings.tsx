@@ -996,6 +996,16 @@ export default function Settings() {
           </div>
         </section>
 
+        {/* Troubleshooting */}
+        <section className="mb-8">
+          <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Troubleshooting</h2>
+          <button onClick={() => window.api.app.showLogsFolder()}
+            className="px-4 py-2 text-sm font-medium text-zinc-500 dark:text-zinc-400 border border-zinc-300 dark:border-zinc-700/50 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800/50 transition-colors">
+            Show logs folder
+          </button>
+          <p className="text-xs text-zinc-400 dark:text-zinc-600 mt-2">If something goes wrong, this file helps us fix it. Logs stay on your computer and are never sent anywhere.</p>
+        </section>
+
         {/* Help / FAQ */}
         <section className="mb-8">
           <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Help</h2>

@@ -175,7 +175,7 @@ export default function AppLayout() {
 
     if (validFile) {
       // Navigate to import page with the file path
-      navigate('/import', { state: { droppedFilePath: validFile.path, droppedFileName: validFile.name } })
+      navigate('/import', { state: { droppedFilePath: (validFile as File & { path: string }).path, droppedFileName: validFile.name } })
     }
   }, [navigate])
 

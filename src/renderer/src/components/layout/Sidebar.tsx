@@ -24,8 +24,11 @@ export default function Sidebar() {
     loadFavorites()
     loadOnboarding()
     window.api.app.getVersion().then((v: unknown) => setAppVersion(v as string))
-    const interval = setInterval(loadBadges, 60000)
-    return () => clearInterval(interval)
+    // Slow fallback poll (5 min) — primary refresh via focus/visibility events
+    const interval = setInterval(loadBadges, 300000)
+    const handleFocus = () => { loadBadges(); loadGroups() }
+    window.addEventListener('focus', handleFocus)
+    return () => { clearInterval(interval); window.removeEventListener('focus', handleFocus) }
   }, [])
 
   async function loadBadges() {
