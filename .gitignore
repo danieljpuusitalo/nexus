@@ -1,7 +1,12 @@
 node_modules/
 out/
 dist/
+dist-web/
 release/
+
+# Extension build artifacts
+extension/node_modules/
+extension/dist/
 
 # Database files
 *.db
@@ -12,6 +17,7 @@ release/
 .env
 .env.local
 .env.*.local
+*.local
 
 # OS files
 .DS_Store
@@ -26,3 +32,6 @@ Desktop.ini
 
 # Window state
 window-state.json
+
+# TypeScript build info
+*.tsbuildinfo
