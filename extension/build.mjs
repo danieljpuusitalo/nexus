@@ -19,10 +19,12 @@ const entries = [
 
 // Copy static files
 mkdirSync('dist', { recursive: true })
+mkdirSync('dist/icons', { recursive: true })
 cpSync('manifest.json', 'dist/manifest.json')
 cpSync('popup.html', 'dist/popup.html')
 cpSync('popup.css', 'dist/popup.css')
 cpSync('src/content.css', 'dist/content.css')
+cpSync('icons', 'dist/icons', { recursive: true })
 
 if (watch) {
   for (const entry of entries) {
