@@ -1,10 +1,28 @@
-import { app, BrowserWindow, shell } from 'electron'
+import { app, BrowserWindow, shell, screen, dialog } from 'electron'
 import path from 'path'
 import fs from 'fs'
 import { getDatabase, closeDatabase } from './database'
 import { registerIpcHandlers } from './ipc'
+import { startBriefingLoop, stopBriefingLoop } from './meeting-briefing'
+import { startGoogleContactsAutoSync, stopGoogleContactsAutoSync } from './google-contacts-sync'
+import { startMicrosoftContactsAutoSync, stopMicrosoftContactsAutoSync } from './microsoft-contacts-sync'
+import { autoUpdater } from 'electron-updater'
+
+// Single instance lock — prevent duplicate app windows
+const gotTheLock = app.requestSingleInstanceLock()
+if (!gotTheLock) {
+  app.quit()
+}
 
 let mainWindow: BrowserWindow | null = null
+
+// When a second instance is launched, focus the existing window
+app.on('second-instance', () => {
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore()
+    mainWindow.focus()
+  }
+})
 
 // --- Window State Persistence ---
 interface WindowState {
@@ -22,7 +40,24 @@ function getStatePath(): string {
 function loadWindowState(): WindowState {
   try {
     const data = fs.readFileSync(getStatePath(), 'utf8')
-    return JSON.parse(data) as WindowState
+    const state = JSON.parse(data) as WindowState
+
+    // Validate saved position is visible on a connected display
+    if (state.x !== undefined && state.y !== undefined) {
+      const displays = screen.getAllDisplays()
+      const visible = displays.some(d => {
+        const b = d.bounds
+        return state.x! >= b.x && state.x! < b.x + b.width &&
+               state.y! >= b.y && state.y! < b.y + b.height
+      })
+      if (!visible) {
+        // Window was on a disconnected monitor — reset position
+        delete state.x
+        delete state.y
+      }
+    }
+
+    return state
   } catch {
     return { width: 1200, height: 800, maximized: false }
   }
@@ -56,13 +91,14 @@ function createWindow(): void {
     height: state.height,
     minWidth: 900,
     minHeight: 600,
-    backgroundColor: '#09090B',
+    backgroundColor: '#09090b',
     show: false,
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false
+      sandbox: false,
+      devTools: !app.isPackaged
     }
   })
 
@@ -87,6 +123,21 @@ function createWindow(): void {
     return { action: 'deny' }
   })
 
+  // Handle renderer crashes gracefully
+  mainWindow.webContents.on('render-process-gone', (_event, details) => {
+    console.error('[Nexus] Renderer process crashed:', details.reason)
+    if (!mainWindow) return
+    dialog.showMessageBox(mainWindow, {
+      type: 'error',
+      title: 'Nexus encountered an error',
+      message: 'The application ran into a problem. Would you like to reload?',
+      buttons: ['Reload', 'Close']
+    }).then(({ response }) => {
+      if (response === 0) mainWindow?.reload()
+      else mainWindow?.close()
+    })
+  })
+
   // In dev, load Vite dev server; in prod, load built files
   if (process.env.ELECTRON_RENDERER_URL) {
     mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL)
@@ -102,7 +153,23 @@ app.whenReady().then(() => {
   // Register IPC handlers
   registerIpcHandlers()
 
+  // Start pre-meeting briefing loop (checks for upcoming calendar events)
+  startBriefingLoop(getDatabase())
+
+  // Start contact auto-sync loops (if enabled by user)
+  startGoogleContactsAutoSync(getDatabase())
+  startMicrosoftContactsAutoSync(getDatabase())
+
   createWindow()
+
+  // Check for updates after a 5-second delay (non-blocking)
+  setTimeout(() => {
+    autoUpdater.autoDownload = true
+    autoUpdater.autoInstallOnAppQuit = true
+    autoUpdater.checkForUpdatesAndNotify().catch(() => {
+      // Silently ignore update check failures (offline, no releases, etc.)
+    })
+  }, 5000)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -112,6 +179,9 @@ app.whenReady().then(() => {
 })
 
 app.on('window-all-closed', () => {
+  stopBriefingLoop()
+  stopGoogleContactsAutoSync()
+  stopMicrosoftContactsAutoSync()
   closeDatabase()
   if (process.platform !== 'darwin') {
     app.quit()
