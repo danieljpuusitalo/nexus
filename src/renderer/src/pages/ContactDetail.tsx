@@ -644,6 +644,60 @@ export default function ContactDetail({ contact, allTags, allGroups, onBack, onR
         </div>
       </div>
 
+      {/* ========== QUICK-LOG BAR + RECENCY STRIP ========== */}
+      <div className={`flex-shrink-0 border-b border-zinc-200 dark:border-zinc-800/60 ${isPanel ? 'px-4 py-2' : 'px-6 py-2.5'}`}>
+        {/* Recency strip — 12-month interaction heatmap */}
+        <div className="flex items-center gap-0.5 mb-2" title="Interaction activity over the past 12 months">
+          {(() => {
+            const months: number[] = []
+            const now = new Date()
+            for (let m = 11; m >= 0; m--) {
+              const monthStart = new Date(now.getFullYear(), now.getMonth() - m, 1)
+              const monthEnd = new Date(now.getFullYear(), now.getMonth() - m + 1, 0)
+              const startStr = monthStart.toISOString().split('T')[0]
+              const endStr = monthEnd.toISOString().split('T')[0]
+              const count = interactions.filter(i => i.date >= startStr && i.date <= endStr).length
+              months.push(count)
+            }
+            const max = Math.max(...months, 1)
+            return months.map((count, i) => (
+              <div key={i} className="flex-1 h-1.5 rounded-full transition-colors"
+                style={{ backgroundColor: count === 0 ? 'var(--tw-ring-color, rgba(161,161,170,0.15))' : `rgba(139,92,246,${0.2 + (count / max) * 0.8})` }}
+                title={`${count} interaction${count !== 1 ? 's' : ''}`}
+              />
+            ))
+          })()}
+        </div>
+        {/* Quick-log chips */}
+        <div className="flex items-center gap-1.5">
+          {[
+            { type: 'call', label: 'Call', icon: '\u{1F4DE}' },
+            { type: 'coffee', label: 'Coffee', icon: '\u2615' },
+            { type: 'email', label: 'Message', icon: '\u{1F4E7}' },
+            { type: 'meeting', label: 'Met', icon: '\u{1F91D}' },
+          ].map(chip => (
+            <button key={chip.type}
+              onClick={async () => {
+                await window.api.interactions.create({ contact_id: contact.id, type: chip.type, description: `${chip.label} with ${contact.first_name}`, date: today() })
+                toast(`${chip.label} logged`)
+                await loadInteractions()
+              }}
+              className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800/50 hover:bg-violet-100 dark:hover:bg-violet-900/20 hover:text-violet-600 dark:hover:text-violet-400 rounded-md transition-colors"
+            >
+              <span>{chip.icon}</span> {chip.label}
+            </button>
+          ))}
+          {/* Health explanation */}
+          <div className="ml-auto text-[10px] text-zinc-400 dark:text-zinc-500">
+            {daysSinceContact >= 0
+              ? daysSinceContact === 0
+                ? 'Contacted today'
+                : `${daysSinceContact}d since last contact${(contact.keep_in_touch_days || 0) > 0 ? ` (goal: every ${contact.keep_in_touch_days}d)` : ''}`
+              : 'No interactions yet'}
+          </div>
+        </div>
+      </div>
+
       {/* ========== MAIN CONTENT AREA ========== */}
       <div className="flex-1 flex overflow-hidden relative">
         {/* Main scrollable area */}

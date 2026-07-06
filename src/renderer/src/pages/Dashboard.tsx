@@ -74,6 +74,10 @@ export default function Dashboard() {
   const [calendarDate, setCalendarDate] = useState(new Date())
   const [googleConnected, setGoogleConnected] = useState(false)
   const [networkUpdates, setNetworkUpdates] = useState<NetworkUpdate[]>([])
+  const [reconnection, setReconnection] = useState<{
+    id: number; first_name: string; last_name: string; company: string;
+    photo_url: string; days_since: number; message: string
+  } | null>(null)
   const [uncategorizedCount, setUncategorizedCount] = useState(0)
   const [checklistProgress, setChecklistProgress] = useState<{ done: number; total: number }>({ done: 0, total: 15 })
   const [checklistDismissed, setChecklistDismissed] = useState(true)
@@ -98,6 +102,7 @@ export default function Dashboard() {
       window.api.settings.get('checklist_dismissed').then((v: unknown) => {
         setChecklistDismissed(v === 'true')
       }),
+      window.api.dashboard.getReconnectionSuggestion().then((r: unknown) => setReconnection(r as typeof reconnection)),
       window.api.google.getStatus().then((status: unknown) => {
         const s = status as { connected: boolean }
         setGoogleConnected(s.connected)
@@ -362,6 +367,30 @@ export default function Dashboard() {
                 )
               })}
             </div>
+          </section>
+        )}
+
+        {/* Reconnection Suggestion */}
+        {reconnection && (
+          <section className="mb-8 pb-6 border-b border-zinc-200 dark:border-zinc-800/60">
+            <h2 className="text-xs font-semibold text-violet-500 dark:text-violet-400 uppercase tracking-wider mb-3">Reconnect Today</h2>
+            <button
+              onClick={() => navigate(`/contacts?contactId=${reconnection.id}`)}
+              className="w-full flex items-center gap-4 p-4 text-left bg-violet-50 dark:bg-violet-900/10 hover:bg-violet-100 dark:hover:bg-violet-900/20 border border-violet-200 dark:border-violet-800/30 rounded-xl transition-colors"
+            >
+              <div className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
+                style={{ backgroundColor: getAvatarColor(`${reconnection.first_name} ${reconnection.last_name}`) }}>
+                {reconnection.first_name[0]}{reconnection.last_name?.[0] || ''}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
+                  {reconnection.first_name} {reconnection.last_name}
+                  {reconnection.company && <span className="font-normal text-zinc-500"> at {reconnection.company}</span>}
+                </p>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">{reconnection.message}</p>
+              </div>
+              <span className="text-xs font-medium text-violet-600 dark:text-violet-400 flex-shrink-0">View &rarr;</span>
+            </button>
           </section>
         )}
 

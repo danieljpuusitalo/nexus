@@ -1568,6 +1568,92 @@ export function registerIpcHandlers(): void {
     return results
   })
 
+  // --- Reconnection Suggestion (daily briefing) ---
+  safeHandle('db:dashboard:getReconnectionSuggestion', () => {
+    // Heuristic: score = dormancy_ratio × strength
+    // dormancy_ratio = days_since_last / median_gap (min 3 interactions to qualify)
+    // strength = log(1 + interaction_count)
+    const candidates = db.prepare(`
+      SELECT c.id, c.first_name, c.last_name, c.company, c.photo_url,
+             COUNT(i.id) as interaction_count,
+             MAX(i.date) as last_interaction_date
+      FROM contacts c
+      JOIN interactions i ON c.id = i.contact_id
+      WHERE c.deleted_at IS NULL
+      GROUP BY c.id
+      HAVING COUNT(i.id) >= 3
+    `).all() as {
+      id: number; first_name: string; last_name: string; company: string;
+      photo_url: string; interaction_count: number; last_interaction_date: string
+    }[]
+
+    if (candidates.length === 0) return null
+
+    // Check which contacts were suggested recently
+    const recentSuggestionStr = (db.prepare("SELECT value FROM settings WHERE key = 'reconnect_suggestions_log'").get() as { value: string } | undefined)?.value || '[]'
+    let recentSuggestions: { id: number; date: string }[] = []
+    try { recentSuggestions = JSON.parse(recentSuggestionStr) } catch { /* ignore */ }
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]
+    const recentIds = new Set(recentSuggestions.filter(s => s.date >= thirtyDaysAgo).map(s => s.id))
+
+    const now = Date.now()
+    let bestScore = -1
+    let bestCandidate: typeof candidates[0] | null = null
+
+    for (const c of candidates) {
+      if (recentIds.has(c.id)) continue
+
+      const daysSinceLast = Math.max(1, Math.floor((now - new Date(c.last_interaction_date + 'T00:00:00').getTime()) / 86400000))
+
+      // Get all interaction dates for this contact to compute median gap
+      const dates = (db.prepare('SELECT date FROM interactions WHERE contact_id = ? ORDER BY date').all(c.id) as { date: string }[]).map(r => r.date)
+      if (dates.length < 3) continue
+
+      const gaps: number[] = []
+      for (let j = 1; j < dates.length; j++) {
+        const gap = Math.max(1, Math.floor((new Date(dates[j] + 'T00:00:00').getTime() - new Date(dates[j-1] + 'T00:00:00').getTime()) / 86400000))
+        gaps.push(gap)
+      }
+      gaps.sort((a, b) => a - b)
+      const medianGap = gaps[Math.floor(gaps.length / 2)]
+
+      const dormancyRatio = daysSinceLast / Math.max(medianGap, 1)
+      const strength = Math.log(1 + c.interaction_count)
+      const score = dormancyRatio * strength
+
+      if (score > bestScore) {
+        bestScore = score
+        bestCandidate = c
+      }
+    }
+
+    if (!bestCandidate) return null
+
+    // Log this suggestion
+    const today = new Date().toISOString().split('T')[0]
+    const updatedLog = [...recentSuggestions.filter(s => s.date >= thirtyDaysAgo), { id: bestCandidate.id, date: today }]
+    db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('reconnect_suggestions_log', ?)").run(JSON.stringify(updatedLog))
+
+    const daysSince = Math.floor((now - new Date(bestCandidate.last_interaction_date + 'T00:00:00').getTime()) / 86400000)
+    // Get the median gap for the message
+    const dates = (db.prepare('SELECT date FROM interactions WHERE contact_id = ? ORDER BY date').all(bestCandidate.id) as { date: string }[]).map(r => r.date)
+    const gaps: number[] = []
+    for (let j = 1; j < dates.length; j++) {
+      gaps.push(Math.max(1, Math.floor((new Date(dates[j] + 'T00:00:00').getTime() - new Date(dates[j-1] + 'T00:00:00').getTime()) / 86400000)))
+    }
+    gaps.sort((a, b) => a - b)
+    const medianGap = gaps[Math.floor(gaps.length / 2)]
+
+    const freqLabel = medianGap <= 14 ? 'biweekly' : medianGap <= 35 ? 'monthly' : medianGap <= 100 ? 'quarterly' : 'periodically'
+
+    return {
+      ...bestCandidate,
+      days_since: daysSince,
+      median_gap: medianGap,
+      message: `It's been ${daysSince} days since you spoke with ${bestCandidate.first_name} — you used to talk ${freqLabel}.`
+    }
+  })
+
   // --- Sync Operations ---
   // Get all rows from a table that need pushing (modified after last sync)
   safeHandle('db:sync:getPendingChanges', (_event, table: string) => {

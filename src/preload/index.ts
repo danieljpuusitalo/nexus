@@ -147,7 +147,8 @@ const api = {
     getKeepInTouchDue: () => ipcRenderer.invoke('db:dashboard:getKeepInTouchDue'),
     getUpcomingBirthdays: (days: number) => ipcRenderer.invoke('db:dashboard:getUpcomingBirthdays', days),
     getRelationshipHealth: () => ipcRenderer.invoke('db:dashboard:getRelationshipHealth'),
-    getNetworkUpdates: (limit: number) => ipcRenderer.invoke('db:dashboard:getNetworkUpdates', limit)
+    getNetworkUpdates: (limit: number) => ipcRenderer.invoke('db:dashboard:getNetworkUpdates', limit),
+    getReconnectionSuggestion: () => ipcRenderer.invoke('db:dashboard:getReconnectionSuggestion')
   },
 
   // Sync operations
