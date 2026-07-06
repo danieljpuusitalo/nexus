@@ -166,13 +166,16 @@ export default function Copilot() {
             <span className="text-3xl">{'\u{1F916}'}</span>
           </div>
           <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 mb-2">Set up your AI Copilot</h2>
-          <p className="text-sm text-zinc-500 mb-2">
-            Nexus Copilot uses your own Anthropic API key. Your key is stored locally and never shared.
+          <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
+            Copilot helps you draft messages, prepare for meetings, and understand your network. It uses your own API key from Anthropic (the company behind Claude).
           </p>
-          <p className="text-sm text-zinc-500 mb-6">
-            Get a free key at{' '}
-            <a href="https://console.anthropic.com" target="_blank" rel="noopener noreferrer"
-              className="text-violet-500 hover:text-violet-400 underline">console.anthropic.com</a>
+          <div className="text-left bg-zinc-50 dark:bg-zinc-800/50 rounded-xl p-4 mb-5 space-y-2.5">
+            <p className="text-sm text-zinc-600 dark:text-zinc-300"><strong>1.</strong> Go to <a href="https://console.anthropic.com" target="_blank" rel="noopener noreferrer" className="text-violet-500 hover:text-violet-400 underline">console.anthropic.com</a> and create a free account</p>
+            <p className="text-sm text-zinc-600 dark:text-zinc-300"><strong>2.</strong> Click "API Keys" and create a new key</p>
+            <p className="text-sm text-zinc-600 dark:text-zinc-300"><strong>3.</strong> Copy it and paste it in Settings</p>
+          </div>
+          <p className="text-xs text-zinc-400 dark:text-zinc-500 mb-5">
+            You only pay for what you use (typically a few cents per conversation). Your key stays on your computer, encrypted, and is never sent anywhere except directly to Anthropic.
           </p>
           <button onClick={() => navigate('/settings')}
             className="px-5 py-2.5 text-sm font-medium text-white bg-violet-600 hover:bg-violet-500 rounded-lg transition-colors">
