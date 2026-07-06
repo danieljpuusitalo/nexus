@@ -161,8 +161,8 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
-  // --- Content Security Policy ---
-  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+  // --- Content Security Policy (production only — Vite dev server needs inline scripts) ---
+  if (app.isPackaged) session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     const csp = [
       "default-src 'self'",
       // Inline styles needed by React, Tailwind, and Leaflet
