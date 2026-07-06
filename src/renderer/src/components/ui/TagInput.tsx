@@ -83,28 +83,28 @@ export default function TagInput({ selectedTags, allTags, onAdd, onRemove, onCre
           }
         }}
         placeholder="Search or create tags..."
-        className="w-full bg-zinc-900 border border-zinc-700/50 rounded-lg px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 outline-none focus:border-violet-500/50 transition-colors"
+        className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700/50 rounded-lg px-3 py-2 text-sm text-zinc-900 dark:text-zinc-200 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 outline-none focus:border-violet-500/50 transition-colors"
       />
 
       {/* Dropdown */}
       {open && (filtered.length > 0 || showCreate) && (
-        <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-zinc-900 border border-zinc-700/50 rounded-lg shadow-xl max-h-40 overflow-y-auto">
+        <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700/50 rounded-lg shadow-xl max-h-40 overflow-y-auto">
           {filtered.map(tag => (
             <button
               key={tag.id}
               type="button"
               onClick={() => { onAdd(tag); setQuery(''); setOpen(false) }}
-              className="w-full text-left px-3 py-2 text-sm hover:bg-zinc-800 transition-colors flex items-center gap-2"
+              className="w-full text-left px-3 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors flex items-center gap-2"
             >
               <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: tag.color }} />
-              <span className="text-zinc-300">{tag.name}</span>
+              <span className="text-zinc-700 dark:text-zinc-300">{tag.name}</span>
             </button>
           ))}
           {showCreate && (
             <button
               type="button"
               onClick={handleCreate}
-              className="w-full text-left px-3 py-2 text-sm hover:bg-zinc-800 transition-colors text-violet-400"
+              className="w-full text-left px-3 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors text-violet-600 dark:text-violet-400"
             >
               Create &ldquo;{query.trim()}&rdquo;
             </button>
