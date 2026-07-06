@@ -22,11 +22,11 @@
 <body>
   <div class="container">
     <h1>Privacy Policy</h1>
-    <p class="updated">Last updated: March 2026</p>
+    <p class="updated">Last updated: July 2026</p>
 
     <h2>What Data Nexus Collects</h2>
-    <p><strong>Locally stored data:</strong> All contact data you enter (names, emails, notes, interactions, etc.) is stored in a local SQLite database on your device. This is your primary copy and never leaves your machine unless you opt into cloud sync.</p>
-    <p><strong>Cloud sync (optional):</strong> If you sign in with a Supabase account, your contact data is synced to a secure Supabase-hosted database so you can access it across devices. Cloud sync is entirely opt-in.</p>
+    <p><strong>Locally stored data:</strong> All contact data you enter (names, emails, notes, interactions, etc.) is stored in a local SQLite database on your device. This is your primary copy and never leaves your machine unless you opt into cloud sync. Nexus automatically creates daily safety copies of your database, stored alongside your main data on your device.</p>
+    <p><strong>Cloud sync (optional):</strong> If you sign in to enable cloud sync, your contact data is synced to a secure cloud database so you can access it across devices. Cloud sync is entirely opt-in.</p>
 
     <h2>What We Do NOT Collect</h2>
     <ul>
@@ -38,9 +38,11 @@
 
     <h2>AI Copilot</h2>
     <p>The AI Copilot feature uses your own Anthropic API key. API calls go directly from your device to Anthropic's servers using your key. Nexus does not proxy, store, or have access to your AI conversations. See <a href="https://www.anthropic.com/privacy" target="_blank">Anthropic's privacy policy</a> for how they handle API requests.</p>
+    <p><strong>What is sent:</strong> When you use Copilot, contact names, job titles, company names, and interaction notes are sent to Anthropic's API to generate suggestions. Your API key is encrypted at rest using your operating system's credential store.</p>
 
     <h2>Google & Microsoft Integrations</h2>
     <p>If you connect Google or Microsoft accounts, Nexus accesses your calendar events and contacts through their official APIs using OAuth. Your Google/Microsoft credentials are never stored by Nexus — only OAuth tokens are kept locally on your device.</p>
+    <p><strong>Scopes requested:</strong> Google — Calendar (read-only) and Contacts (read-only). Microsoft — Calendar, Mail, Contacts, and User profile (all read-only).</p>
 
     <h2>Chrome Extension</h2>
     <p>The Nexus Chrome extension reads publicly visible data from LinkedIn profile pages (name, company, headline) when you explicitly click "Save to Nexus." It does not collect browsing history, read other websites, or run in the background.</p>
