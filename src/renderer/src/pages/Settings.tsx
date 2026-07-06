@@ -292,9 +292,25 @@ export default function Settings() {
     setExportMessage(result.message)
     if (result.success) toast('JSON exported')
   }
+  const [backups, setBackups] = useState<{ name: string; path: string; date: string; sizeBytes: number }[]>([])
+  const [showBackups, setShowBackups] = useState(false)
+
   async function handleBackup() {
     await window.api.data.backup()
-    toast('Backup created')
+    toast('Safety copy created')
+    if (showBackups) loadBackups()
+  }
+
+  async function loadBackups() {
+    const list = await window.api.data.backupList()
+    setBackups(list || [])
+    setShowBackups(true)
+  }
+
+  async function handleRestore(backupPath: string, date: string) {
+    if (!confirm(`Restore from backup (${date})? The app will restart with the backed-up data. Your current data will be saved as a safety copy first.`)) return
+    const result = await window.api.data.backupRestore(backupPath)
+    if (!result.success) toast(result.error || 'Restore failed')
   }
 
   async function handleImportCsv(linkedin = false) {
@@ -890,12 +906,16 @@ export default function Settings() {
                   className="px-4 py-2 text-sm font-medium text-violet-600 dark:text-violet-400 border border-violet-500/30 rounded-lg hover:bg-violet-500/10 transition-colors">
                   Spreadsheet (with tags &amp; groups)
                 </button>
-                <button onClick={handleExportJson}
+                <button onClick={async () => { const r = await window.api.data.exportVcard(); if (r?.message) toast(r.message) }}
+                  className="px-4 py-2 text-sm font-medium text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 rounded-lg hover:bg-emerald-500/10 transition-colors">
+                  vCard (.vcf)
+                </button>
+                <button onClick={async () => { const r = await window.api.data.exportFull(); if (r?.message) toast(r.message) }}
                   className="px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 border border-blue-500/30 rounded-lg hover:bg-blue-500/10 transition-colors">
-                  Complete backup
+                  Export everything
                 </button>
               </div>
-              <p className="text-xs text-zinc-400 mt-2">Full spreadsheet includes tags, groups, and keep-in-touch. Complete backup includes everything: contacts, interactions, reminders, and custom fields.</p>
+              <p className="text-xs text-zinc-400 mt-2">vCard works with Google Contacts and most phone apps. "Export everything" saves contacts (CSV + vCard), interactions, and reminders to a folder — your data, fully portable.</p>
               {exportMessage && <p className="text-xs text-emerald-500 mt-2">{exportMessage}</p>}
             </div>
           </div>
@@ -912,9 +932,43 @@ export default function Settings() {
         {/* Backup */}
         <section className="mb-8">
           <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Backup</h2>
-          <button onClick={handleBackup}
-            className="px-4 py-2 text-sm font-medium text-zinc-500 dark:text-zinc-400 border border-zinc-300 dark:border-zinc-700/50 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800/50 transition-colors">Export Database Backup</button>
-          <p className="text-xs text-zinc-400 dark:text-zinc-600 mt-2">Saves a copy of the entire SQLite database file.</p>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-3">
+            Nexus automatically makes a safety copy of all your contacts every day. You can also make one now or restore from an earlier copy.
+          </p>
+          <div className="flex gap-2 flex-wrap">
+            <button onClick={handleBackup}
+              className="px-4 py-2 text-sm font-medium text-zinc-500 dark:text-zinc-400 border border-zinc-300 dark:border-zinc-700/50 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800/50 transition-colors">
+              Back up now
+            </button>
+            <button onClick={loadBackups}
+              className="px-4 py-2 text-sm font-medium text-zinc-500 dark:text-zinc-400 border border-zinc-300 dark:border-zinc-700/50 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800/50 transition-colors">
+              {showBackups ? 'Refresh list' : 'Restore from backup'}
+            </button>
+          </div>
+          {showBackups && (
+            <div className="mt-3 border border-zinc-200 dark:border-zinc-700/50 rounded-xl overflow-hidden">
+              {backups.length === 0 ? (
+                <p className="text-sm text-zinc-400 p-4">No backups found yet. One will be created automatically tomorrow.</p>
+              ) : (
+                <div className="divide-y divide-zinc-200 dark:divide-zinc-700/50">
+                  {backups.slice(0, 10).map(b => (
+                    <div key={b.name} className="flex items-center justify-between px-4 py-2.5">
+                      <div>
+                        <span className="text-sm text-zinc-700 dark:text-zinc-300">{b.date}</span>
+                        <span className="text-xs text-zinc-400 ml-2">{(b.sizeBytes / 1024 / 1024).toFixed(1)} MB</span>
+                      </div>
+                      <button
+                        onClick={() => handleRestore(b.path, b.date)}
+                        className="text-xs font-medium text-blue-500 hover:text-blue-400 transition-colors"
+                      >
+                        Restore
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </section>
 
         {/* Danger Zone */}

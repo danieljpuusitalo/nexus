@@ -266,6 +266,8 @@ const api = {
     exportFullCsv: () => ipcRenderer.invoke('db:export:fullCsv'),
     exportJson: () => ipcRenderer.invoke('db:export:json'),
     exportFilteredCsv: (contactIds: number[]) => ipcRenderer.invoke('db:export:filteredCsv', contactIds),
+    exportVcard: () => ipcRenderer.invoke('db:export:vcard'),
+    exportFull: () => ipcRenderer.invoke('db:export:full'),
     importSelectCsv: () => ipcRenderer.invoke('db:import:selectCsv'),
     importReadFile: (filePath: string) => ipcRenderer.invoke('db:import:readFile', filePath),
     importExecute: (rows: Record<string, string>[], mode: string) => ipcRenderer.invoke('db:import:execute', rows, mode),
@@ -276,6 +278,8 @@ const api = {
     importBusinessCardText: (text: string) => ipcRenderer.invoke('db:import:businessCardText', text),
     selectPlatformFile: (platform: string) => ipcRenderer.invoke('db:import:selectPlatformFile', platform),
     backup: () => ipcRenderer.invoke('db:backup'),
+    backupList: () => ipcRenderer.invoke('db:backup:list'),
+    backupRestore: (backupPath: string) => ipcRenderer.invoke('db:backup:restore', backupPath),
     resetDatabase: () => ipcRenderer.invoke('db:resetDatabase')
   }
 }
