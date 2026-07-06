@@ -10,6 +10,7 @@
 
 import { BrowserWindow } from 'electron'
 import type Database from 'better-sqlite3'
+import { getSecret, setSecret, deleteSecret } from './secure-store'
 
 const MS_AUTH_URL = 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize'
 const MS_TOKEN_URL = 'https://login.microsoftonline.com/common/oauth2/v2.0/token'
@@ -57,7 +58,7 @@ export function getMicrosoftCredentials(
 }
 
 export function isMicrosoftConnected(db: Database.Database): boolean {
-  return Boolean(getSetting(db, 'microsoft_refresh_token'))
+  return Boolean(getSecret(db, 'microsoft_refresh_token'))
 }
 
 export function getMicrosoftStatus(db: Database.Database): {
@@ -120,8 +121,8 @@ export async function startMicrosoftAuth(db: Database.Database): Promise<Microso
 
       exchangeCode(code, creds.clientId)
         .then(async (tokens) => {
-          setSetting(db, 'microsoft_access_token', tokens.access_token)
-          setSetting(db, 'microsoft_refresh_token', tokens.refresh_token)
+          setSecret(db, 'microsoft_access_token', tokens.access_token)
+          setSecret(db, 'microsoft_refresh_token', tokens.refresh_token)
           setSetting(db, 'microsoft_token_expiry', String(tokens.expires_at))
 
           try {
@@ -155,21 +156,16 @@ export async function startMicrosoftAuth(db: Database.Database): Promise<Microso
 }
 
 export function disconnectMicrosoft(db: Database.Database): void {
-  const keys = [
-    'microsoft_access_token',
-    'microsoft_refresh_token',
-    'microsoft_token_expiry',
-    'microsoft_email'
-  ]
-  for (const key of keys) {
-    deleteSetting(db, key)
-  }
+  deleteSecret(db, 'microsoft_access_token')
+  deleteSecret(db, 'microsoft_refresh_token')
+  deleteSetting(db, 'microsoft_token_expiry')
+  deleteSetting(db, 'microsoft_email')
 }
 
 export async function getValidMicrosoftAccessToken(db: Database.Database): Promise<string | null> {
   if (!isMicrosoftConnected(db)) return null
 
-  const accessToken = getSetting(db, 'microsoft_access_token')
+  const accessToken = getSecret(db, 'microsoft_access_token')
   const expiry = getSetting(db, 'microsoft_token_expiry')
 
   if (accessToken && expiry && Date.now() < Number(expiry) - 60000) {
@@ -216,7 +212,7 @@ async function refreshMicrosoftToken(db: Database.Database): Promise<string | nu
   const creds = getMicrosoftCredentials(db)
   if (!creds) return null
 
-  const refreshToken = getSetting(db, 'microsoft_refresh_token')
+  const refreshToken = getSecret(db, 'microsoft_refresh_token')
   if (!refreshToken) return null
 
   try {
@@ -242,7 +238,7 @@ async function refreshMicrosoftToken(db: Database.Database): Promise<string | nu
       expires_in: number
     }
 
-    setSetting(db, 'microsoft_access_token', data.access_token)
+    setSecret(db, 'microsoft_access_token', data.access_token)
     setSetting(db, 'microsoft_token_expiry', String(Date.now() + data.expires_in * 1000))
 
     return data.access_token
