@@ -1,5 +1,6 @@
 import { ipcMain, dialog, app, BrowserWindow, shell } from 'electron'
 import { getDatabase, getDatabasePath } from './database'
+import { getSecret as getSecretValue, setSecret as setSecretValue, deleteSecret as deleteSecretValue } from './secure-store'
 import {
   startGoogleAuth,
   disconnectGoogle,
@@ -1154,7 +1155,7 @@ export function registerIpcHandlers(): void {
     }
 
     // Retrieve user session token from renderer-stored localStorage via settings
-    const sessionToken = (db.prepare("SELECT value FROM settings WHERE key = 'supabase_access_token'").get() as { value: string } | undefined)?.value
+    const sessionToken = getSecretValue(db, 'supabase_access_token')
 
     if (!sessionToken) {
       return { error: 'Not signed in. Please sign in to upgrade.' }
@@ -1190,7 +1191,7 @@ export function registerIpcHandlers(): void {
       || process.env.VITE_SUPABASE_URL || ''
     const supabaseAnonKey = (db.prepare("SELECT value FROM settings WHERE key = 'supabase_anon_key'").get() as { value: string } | undefined)?.value
       || process.env.VITE_SUPABASE_ANON_KEY || ''
-    const sessionToken = (db.prepare("SELECT value FROM settings WHERE key = 'supabase_access_token'").get() as { value: string } | undefined)?.value
+    const sessionToken = getSecretValue(db, 'supabase_access_token')
 
     if (!supabaseUrl || !supabaseAnonKey || !sessionToken) {
       return null // No cloud — fall back to local plan
@@ -1851,17 +1852,16 @@ export function registerIpcHandlers(): void {
   // --- AI ---
 
   ipcMain.handle('ai:getStatus', () => {
-    const row = db.prepare('SELECT value FROM settings WHERE key = ?').get('ai_api_key') as { value: string } | undefined
-    return { configured: !!(row?.value) }
+    return { configured: !!getSecretValue(db, 'ai_api_key') }
   })
 
   ipcMain.handle('ai:setApiKey', (_event, key: string) => {
-    db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run('ai_api_key', key)
+    setSecretValue(db, 'ai_api_key', key)
     return { success: true }
   })
 
   ipcMain.handle('ai:removeApiKey', () => {
-    db.prepare('DELETE FROM settings WHERE key = ?').run('ai_api_key')
+    deleteSecretValue(db, 'ai_api_key')
     return { success: true }
   })
 
@@ -2106,7 +2106,7 @@ export function registerIpcHandlers(): void {
       GROUP BY g.id HAVING COUNT(cg.contact_id) >= 10 LIMIT 1
     `).get()
     const noteCount = (db.prepare("SELECT COUNT(*) as n FROM interactions WHERE type = 'note'").get() as { n: number }).n
-    const googleConnected = db.prepare("SELECT value FROM settings WHERE key = 'google_refresh_token'").get()
+    const googleConnected = getSecretValue(db, 'google_refresh_token')
     const googleImported = db.prepare("SELECT value FROM settings WHERE key = 'google_contacts_last_import'").get()
     const hasImported = !!googleImported || contactCount >= 5
 

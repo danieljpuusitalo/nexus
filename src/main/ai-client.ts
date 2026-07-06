@@ -4,6 +4,7 @@
  */
 
 import type Database from 'better-sqlite3'
+import { getSecret } from './secure-store'
 
 const ANTHROPIC_API = 'https://api.anthropic.com/v1/messages'
 const MODEL = 'claude-sonnet-4-20250514'
@@ -20,8 +21,7 @@ export interface AiResponse {
 }
 
 function getApiKey(db: Database.Database): string | null {
-  const row = db.prepare('SELECT value FROM settings WHERE key = ?').get('ai_api_key') as { value: string } | undefined
-  return row?.value || null
+  return getSecret(db, 'ai_api_key')
 }
 
 export function isAiConfigured(db: Database.Database): boolean {

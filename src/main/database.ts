@@ -2,6 +2,7 @@ import Database from 'better-sqlite3'
 import { app, net } from 'electron'
 import path from 'path'
 import fs from 'fs'
+import { initSecretStore, migrateSecretsFromSettings } from './secure-store'
 
 let db: Database.Database
 
@@ -14,6 +15,8 @@ export function getDatabase(): Database.Database {
     db.pragma('foreign_keys = ON')
     initializeSchema()
     migrateSchema()
+    initSecretStore(db)
+    migrateSecretsFromSettings(db)
     if (!app.isPackaged) seedDevData()
   }
   return db
@@ -361,12 +364,6 @@ function migrateSchema(): void {
 
 // ---- Dev-only seed data ----
 function seedDevData(): void {
-  // Google OAuth credentials are injected at build time via env vars — see .env.example
-  // Do NOT hardcode real client IDs or secrets here
-  const upsertSetting = db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value')
-  upsertSetting.run('google_client_id', '')
-  upsertSetting.run('google_client_secret', '')
-
   const count = db.prepare('SELECT COUNT(*) as n FROM contacts WHERE deleted_at IS NULL').get() as { n: number }
   if (count.n > 0) return // already seeded
 
