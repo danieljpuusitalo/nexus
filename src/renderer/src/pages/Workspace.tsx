@@ -47,24 +47,22 @@ export default function Workspace() {
   }, [])
 
   async function loadData() {
-    const [contactsData, tagsData, groupsData, kitData] = await Promise.all([
+    const [contactsData, tagsData, groupsData, kitData, lastDates] = await Promise.all([
       window.api.contacts.getAllWithTags(),
       window.api.tags.getAll(),
       window.api.groups.getAll(),
-      window.api.dashboard.getKeepInTouchDue()
+      window.api.dashboard.getKeepInTouchDue(),
+      window.api.interactions.getLastDates()
     ])
     setContacts(contactsData as ContactWithTags[])
     setAllTags(tagsData as Tag[])
     setAllGroups(groupsData as Group[])
     setKitContacts(kitData as KeepInTouchContact[])
 
-    // Load last interaction dates for health dots
+    // Single batched query replaces per-contact N+1 loop
     const dateMap = new Map<number, string>()
-    for (const c of contactsData as ContactWithTags[]) {
-      try {
-        const interactions = await window.api.interactions.getForContact(c.id) as { date: string }[]
-        if (interactions.length > 0) dateMap.set(c.id, interactions[0].date)
-      } catch { /* ignore */ }
+    for (const row of (lastDates as { contact_id: number; last_date: string }[])) {
+      dateMap.set(row.contact_id, row.last_date)
     }
     setLastContacted(dateMap)
   }

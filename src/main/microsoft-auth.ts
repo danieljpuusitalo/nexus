@@ -119,7 +119,7 @@ export async function startMicrosoftAuth(db: Database.Database): Promise<Microso
         return
       }
 
-      exchangeCode(code, creds.clientId)
+      exchangeCode(code, creds!.clientId)
         .then(async (tokens) => {
           setSecret(db, 'microsoft_access_token', tokens.access_token)
           setSecret(db, 'microsoft_refresh_token', tokens.refresh_token)

@@ -119,7 +119,7 @@ export async function startGoogleAuth(db: Database.Database): Promise<GoogleToke
         return
       }
 
-      exchangeCode(code, creds.clientId, creds.clientSecret)
+      exchangeCode(code, creds!.clientId, creds!.clientSecret)
         .then(async (tokens) => {
           // Store tokens (secrets encrypted, expiry in plaintext settings)
           setSecret(db, 'google_access_token', tokens.access_token)

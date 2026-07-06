@@ -34,7 +34,8 @@ import fs from 'fs'
 import path from 'path'
 
 // Safe IPC handler wrapper — catches errors, validates sender
-function safeHandle(channel: string, handler: (...args: unknown[]) => unknown): void {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function safeHandle(channel: string, handler: (...args: any[]) => any): void {
   ipcMain.handle(channel, async (event, ...rest) => {
     // Sender check: only accept messages from our main window
     const mainWin = BrowserWindow.getAllWindows()[0]
@@ -388,6 +389,14 @@ export function registerIpcHandlers(): void {
     return db.prepare('SELECT * FROM interactions WHERE contact_id = ? ORDER BY date DESC').all(contactId)
   })
 
+  safeHandle('db:interactions:getLastDates', () => {
+    return db.prepare(`
+      SELECT contact_id, MAX(date) as last_date
+      FROM interactions
+      GROUP BY contact_id
+    `).all()
+  })
+
   safeHandle('db:interactions:create', (_event, interaction) => {
     const stmt = db.prepare(`
       INSERT INTO interactions (contact_id, type, description, date)
@@ -563,6 +572,11 @@ export function registerIpcHandlers(): void {
   // --- App Info ---
   safeHandle('app:getVersion', () => {
     return app.getVersion()
+  })
+
+  safeHandle('app:showLogsFolder', () => {
+    const logPath = app.getPath('logs')
+    shell.openPath(logPath)
   })
 
   // --- Data / Settings ---
@@ -1313,7 +1327,7 @@ export function registerIpcHandlers(): void {
         body: JSON.stringify({ plan, billing }),
       })
 
-      const data = await response.json()
+      const data = (await response.json()) as { url?: string; error?: string }
 
       if (data.url) {
         // Open Stripe checkout in default browser
