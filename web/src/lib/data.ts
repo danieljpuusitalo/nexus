@@ -528,3 +528,85 @@ Following up on ${l.conversationTitle.toLowerCase()}. I said I would ${l.text.ch
 
 `
 }
+
+/* ----------------------------------------------------------- reciprocity -- */
+
+/**
+ * An act of value moving in one direction.
+ *
+ * Two sources. Commitments somebody actually kept, and favours that never
+ * became commitments at all: an introduction made, an hour spent on your
+ * problem, a straight answer when a vague one would have been easier. The
+ * second kind is most of what people actually give each other and none of it
+ * appears in a promises ledger, because nobody promised anything.
+ */
+export interface Exchange {
+  id: string
+  person_id: number
+  direction: 'gave' | 'received'
+  kind: 'commitment' | 'introduction' | 'counsel'
+  text: string
+  at: string
+  conversation_id: number
+}
+
+function rawExchanges(): Exchange[] {
+  const raw = (data as unknown as { exchanges?: Exchange[] }).exchanges ?? []
+  return raw.map(e => ({ ...e, id: `x${e.id}` }))
+}
+
+/** Everything that has passed between you and one person, both directions. */
+export function exchangesWith(personId: number): { gave: Exchange[]; received: Exchange[] } {
+  const kept = loopsFor(personId)
+    .filter(l => l.done)
+    .map<Exchange>(l => ({
+      id: `c${l.conversationId}:${l.text}`,
+      person_id: personId,
+      // A commitment you kept is something you gave them.
+      direction: l.owner === 'me' ? 'gave' : 'received',
+      kind: 'commitment',
+      text: l.text,
+      at: l.agreedAt,
+      conversation_id: l.conversationId,
+    }))
+
+  const all = [...kept, ...rawExchanges().filter(e => e.person_id === personId)].sort((a, b) =>
+    b.at.localeCompare(a.at)
+  )
+  return {
+    gave: all.filter(e => e.direction === 'gave'),
+    received: all.filter(e => e.direction === 'received'),
+  }
+}
+
+export interface Standing {
+  person: Person
+  gave: Exchange[]
+  received: Exchange[]
+  /** Positive means they have given you more than you have given them. */
+  net: number
+  /** Things they are looking for that you have not served. */
+  couldGive: Signal[]
+}
+
+/**
+ * Where you stand with everyone, most in-your-debt first.
+ *
+ * Counts, never a score. "She has given you three things and you have given her
+ * one" is a fact you can check and act on. A generosity rating would be neither,
+ * and it would invite the exact gamification that would ruin this.
+ */
+export function standings(): Standing[] {
+  return load()
+    .people.map(person => {
+      const { gave, received } = exchangesWith(person.id)
+      return {
+        person,
+        gave,
+        received,
+        net: received.length - gave.length,
+        couldGive: signalsFor(person.id).needs,
+      }
+    })
+    .sort((a, b) => b.net - a.net)
+}

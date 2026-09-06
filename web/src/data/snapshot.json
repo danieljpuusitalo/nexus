@@ -31,7 +31,7 @@
       "email": "astrid.berg@northzone.com",
       "company": "Northzone",
       "role": "Principal",
-      "conversations": 2,
+      "conversations": 3,
       "first_conversation_at": "2026-06-03",
       "last_conversation_at": "2026-08-27",
       "last_title": "Co-invest: Reo Pack"
@@ -525,6 +525,53 @@
         "hiring",
         "technical-cofounder"
       ]
+    }
+  ],
+  "exchanges": [
+    {
+      "id": 1,
+      "person_id": 3,
+      "direction": "received",
+      "kind": "introduction",
+      "text": "Introduced you to Jonathan Hvid at Fenja AI",
+      "at": "2026-08-14",
+      "conversation_id": 5
+    },
+    {
+      "id": 2,
+      "person_id": 3,
+      "direction": "received",
+      "kind": "counsel",
+      "text": "Gave you her read on the Reo Pack cap and comparable rounds",
+      "at": "2026-08-27",
+      "conversation_id": 3
+    },
+    {
+      "id": 3,
+      "person_id": 4,
+      "direction": "received",
+      "kind": "counsel",
+      "text": "Spent an hour walking you through the battery architecture",
+      "at": "2026-08-19",
+      "conversation_id": 4
+    },
+    {
+      "id": 4,
+      "person_id": 1,
+      "direction": "gave",
+      "kind": "counsel",
+      "text": "Modelled the downside case on return rate for him",
+      "at": "2026-05-21",
+      "conversation_id": 8
+    },
+    {
+      "id": 5,
+      "person_id": 2,
+      "direction": "gave",
+      "kind": "introduction",
+      "text": "Put him in front of two people at the Nordic fintech dinner",
+      "at": "2026-08-20",
+      "conversation_id": 5
     }
   ]
 }

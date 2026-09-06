@@ -25,6 +25,8 @@ import {
   initials,
   introductions,
   longDate,
+  personById,
+  standings,
   unmet,
   type Introduction,
 } from '../lib/data'
@@ -93,6 +95,9 @@ export default function Help() {
 
   const all = introductions().filter(i => !dismissed[i.key])
   const open = unmet()
+  // Only the lopsided ones. Everyone else is square, and a list of square
+  // relationships is a list of nothing to do.
+  const owedTo = standings().filter(s => s.net > 0)
 
   return (
     <div className="record">
@@ -117,6 +122,64 @@ export default function Help() {
           ))
         )}
 
+        {owedTo.length > 0 && (
+          <>
+            <div className="loop-head" style={{ marginTop: 34 }}>
+              <h2>People who have given you more</h2>
+              <span>{owedTo.length}</span>
+            </div>
+            <p className="blurb" style={{ marginBottom: 14 }}>
+              Counted, not scored. What they have done for you, against what you have done for
+              them, and what they said they are looking for.
+            </p>
+            {owedTo.map(st => (
+              <article className="standing" key={st.person.id}>
+                <div className="standing-head">
+                  <Link to={`/people/${st.person.id}`} className="side-who">
+                    <span className="av">{initials(st.person.name)}</span>
+                    <span>
+                      <b>{st.person.name}</b>
+                      <span>{[st.person.role, st.person.company].filter(Boolean).join(', ')}</span>
+                    </span>
+                  </Link>
+                  <div className="tally">
+                    <span>
+                      <b>{st.received.length}</b> given to you
+                    </span>
+                    <i />
+                    <span>
+                      <b>{st.gave.length}</b> given back
+                    </span>
+                  </div>
+                </div>
+
+                <div className="standing-body">
+                  <div>
+                    <div className="side-label">They have</div>
+                    <ul className="tally-list">
+                      {st.received.slice(0, 3).map(e => (
+                        <li key={e.id}>{e.text}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <div className="side-label give">They are looking for</div>
+                    {st.couldGive.length === 0 ? (
+                      <p className="none">Nothing they have mentioned.</p>
+                    ) : (
+                      <ul className="tally-list">
+                        {st.couldGive.map(sig => (
+                          <li key={sig.id}>{sig.text}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              </article>
+            ))}
+          </>
+        )}
+
         {open.length > 0 && (
           <>
             <div className="loop-head" style={{ marginTop: 34 }}>
@@ -129,8 +192,12 @@ export default function Help() {
             </p>
             {open.map(s => (
               <div className="unmet" key={s.id}>
-                <Link to={`/people/${s.person_id}`} className="unmet-who">
-                  {initials(s.text)}
+                <Link
+                  to={`/people/${s.person_id}`}
+                  className="unmet-who"
+                  title={personById(s.person_id)?.name}
+                >
+                  {initials(personById(s.person_id)?.name ?? '?')}
                 </Link>
                 <div>
                   <div className="side-text">{s.text}</div>

@@ -16,6 +16,7 @@ import {
   ago,
   balance,
   conversationsFor,
+  exchangesWith,
   loopsFor,
   initials,
   load,
@@ -61,6 +62,7 @@ export default function Person() {
   const r = rhythm(dates)
   const mix = sourceMix(conversations)
   const bal = balance(loopsFor(person.id))
+  const ex = exchangesWith(person.id)
 
   return (
     <div className="record">
@@ -157,6 +159,50 @@ export default function Person() {
             )}
           </section>
         </div>
+
+        {/* What has actually passed between you, both directions, counted and
+            never scored. Kept promises plus the favours that never became
+            promises at all, which is most of what people give each other. */}
+        {(ex.gave.length > 0 || ex.received.length > 0) && (
+          <div className="ledger">
+            <div className="ledger-head">
+              <span>
+                You have given <b>{ex.gave.length}</b>
+              </span>
+              <div className="ledger-bar">
+                <i
+                  className="mine"
+                  style={{
+                    flex: Math.max(ex.gave.length, 0.15),
+                  }}
+                />
+                <i
+                  className="theirs"
+                  style={{
+                    flex: Math.max(ex.received.length, 0.15),
+                  }}
+                />
+              </div>
+              <span>
+                <b>{ex.received.length}</b> received
+              </span>
+            </div>
+            <div className="ledger-body">
+              <ul className="tally-list">
+                {ex.gave.map(e => (
+                  <li key={e.id}>{e.text}</li>
+                ))}
+                {ex.gave.length === 0 && <li className="none">Nothing yet.</li>}
+              </ul>
+              <ul className="tally-list">
+                {ex.received.map(e => (
+                  <li key={e.id}>{e.text}</li>
+                ))}
+                {ex.received.length === 0 && <li className="none">Nothing yet.</li>}
+              </ul>
+            </div>
+          </div>
+        )}
 
         <Grid dates={dates} cell={10} gap={2} />
 
