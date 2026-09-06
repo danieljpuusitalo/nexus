@@ -8,6 +8,7 @@ export default function Sidebar() {
   const navigate = useNavigate()
   const [reminderBadge, setReminderBadge] = useState(0)
   const [keepInTouchBadge, setKeepInTouchBadge] = useState(0)
+  const [reviewBadge, setReviewBadge] = useState(0)
   const [appVersion, setAppVersion] = useState('')
   const [groups, setGroups] = useState<GroupWithCount[]>([])
   const [groupsOpen, setGroupsOpen] = useState(true)
@@ -38,6 +39,10 @@ export default function Sidebar() {
       setReminderBadge(overdue + dueToday)
       const kitDue = (await window.api.dashboard.getKeepInTouchDue() as unknown[]).length
       setKeepInTouchBadge(kitDue)
+      // People the ledger could not place. Surfaced as a badge because an
+      // unresolved attendee is a fixable gap, not a background condition.
+      const toReview = (await window.api.ledger.getReviewQueue(200) as unknown[]).length
+      setReviewBadge(toReview)
     } catch {
       // ignore on startup race
     }
@@ -165,6 +170,18 @@ export default function Sidebar() {
           <NavLink to="/interactions" className={linkClass}>
             <InteractionsIcon className="w-4 h-4 flex-shrink-0" />
             <span className="flex-1">Timeline</span>
+          </NavLink>
+          <NavLink to="/review" className={({ isActive }) =>
+            `flex items-center gap-2 px-3 py-1.5 ml-6 rounded-lg text-xs transition-colors ${
+              isActive ? 'text-violet-600 dark:text-violet-400 font-medium' : 'text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400'
+            }`
+          }>
+            <span className="flex-1">Who is this?</span>
+            {reviewBadge > 0 && (
+              <span className="min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white dark:text-zinc-950 px-1">
+                {reviewBadge > 99 ? '99+' : reviewBadge}
+              </span>
+            )}
           </NavLink>
           <NavLink to="/pipeline" className={linkClass}>
             <PipelineIcon className="w-4 h-4 flex-shrink-0" />
