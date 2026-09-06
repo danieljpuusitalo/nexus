@@ -1,4 +1,4 @@
-# Nexus — web
+# Nexus, web
 
 The interface. Web-first; the Electron app is paused.
 
@@ -6,12 +6,12 @@ The interface. Web-first; the Electron app is paused.
 cd web
 npm install
 npm run dev      # http://localhost:5180
-npm run build    # static output in web/dist — hostable anywhere
+npm run build    # static output in web/dist, hostable anywhere
 ```
 
 ## What this is
 
-A clean-slate UI. Nothing is imported from the old Electron renderer — different
+A clean-slate UI. Nothing is imported from the old Electron renderer, different
 type, different palette, different structure. The old app was a personal CRM with
 a meetings panel bolted on; this is the record itself.
 
@@ -21,12 +21,12 @@ Editorial-archival rather than dashboard. The product is a document that
 accumulates, so it is typeset like one: warm ink ground, bone text, generous
 measure, metadata set in mono the way a marginal note would be.
 
-The structural idea is the **spine** — one hairline down every list of
+The structural idea is the **spine**, one hairline down every list of
 conversations with dates hanging in the left margin, so a relationship reads as
 a continuous record you scroll rather than a grid of cards.
 
 The palette encodes the product's most important distinction. Everything a
-source actually wrote is **bone**. Anything a model wrote is **sage** — a
+source actually wrote is **bone**. Anything a model wrote is **sage**, a
 different temperature entirely, behind its own rule, so you can tell before
 reading a word whether you are looking at the record or an interpretation of it.
 

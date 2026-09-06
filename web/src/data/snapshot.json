@@ -12,7 +12,7 @@
       "conversations": 4,
       "first_conversation_at": "2026-02-11",
       "last_conversation_at": "2026-09-02",
-      "last_title": "Bridge round — terms walkthrough"
+      "last_title": "Bridge round: terms walkthrough"
     },
     {
       "id": 2,
@@ -23,7 +23,7 @@
       "conversations": 2,
       "first_conversation_at": "2026-08-14",
       "last_conversation_at": "2026-08-31",
-      "last_title": "Fenja AI — first look"
+      "last_title": "Fenja AI: first look"
     },
     {
       "id": 3,
@@ -34,7 +34,7 @@
       "conversations": 2,
       "first_conversation_at": "2026-06-03",
       "last_conversation_at": "2026-08-27",
-      "last_title": "Co-invest — Reo Pack"
+      "last_title": "Co-invest: Reo Pack"
     },
     {
       "id": 4,
@@ -45,7 +45,7 @@
       "conversations": 1,
       "first_conversation_at": "2026-08-19",
       "last_conversation_at": "2026-08-19",
-      "last_title": "Voltiq — technical deep dive"
+      "last_title": "Voltiq: technical deep dive"
     },
     {
       "id": 5,
@@ -56,7 +56,7 @@
       "conversations": 1,
       "first_conversation_at": "2026-07-30",
       "last_conversation_at": "2026-07-30",
-      "last_title": "Ember — intro call"
+      "last_title": "Ember: intro call"
     }
   ],
   "conversations": [
@@ -64,7 +64,7 @@
       "id": 1,
       "source": "Fathom",
       "source_url": "#",
-      "title": "Bridge round — terms walkthrough",
+      "title": "Bridge round: terms walkthrough",
       "started_at": "2026-09-02",
       "duration_minutes": 41,
       "summary": "Davide walked through the bridge terms. €2.4M on a €18M pre-money cap with a 20% discount, structured as a convertible. Existing investors are taking €1.1M; the remaining €1.3M is open.\n\nThe 94% return rate on the retail pilot held through August across all four supermarket chains. German expansion is gated on one certification that lands in Q1.\n\nHe asked directly whether 4impact would lead. I said we would need to see October cohort data before committing to a lead position, but that we could anchor.",
@@ -74,43 +74,57 @@
         "Review October cohort data when it lands"
       ],
       "has_transcript": true,
-      "people": ["Davide Mazzanti"],
-      "person_ids": [1]
+      "people": [
+        "Davide Mazzanti"
+      ],
+      "person_ids": [
+        1
+      ]
     },
     {
       "id": 2,
       "source": "Tactiq",
-      "title": "Fenja AI — first look",
+      "title": "Fenja AI: first look",
       "started_at": "2026-08-31",
       "duration_minutes": 4,
       "summary": "",
       "action_items": [],
       "has_transcript": true,
-      "generated_summary": "A short introductory call about Fenja AI. Jonathan described the product as a compliance-monitoring layer for Nordic financial institutions, currently in pilot with two banks. He mentioned the team is four people, all technical, and that they have not raised institutionally yet.\n\nThe call ended early — Jonathan had a hard stop. No numbers were discussed.",
-      "generated_action_items": ["Book a longer session to cover metrics and the raise"],
+      "generated_summary": "A short introductory call about Fenja AI. Jonathan described the product as a compliance-monitoring layer for Nordic financial institutions, currently in pilot with two banks. He mentioned the team is four people, all technical, and that they have not raised institutionally yet.\n\nThe call ended early, Jonathan had a hard stop. No numbers were discussed.",
+      "generated_action_items": [
+        "Book a longer session to cover metrics and the raise"
+      ],
       "generated_model": "claude-sonnet-5",
-      "people": ["Jonathan Hvid"],
-      "person_ids": [2]
+      "people": [
+        "Jonathan Hvid"
+      ],
+      "person_ids": [
+        2
+      ]
     },
     {
       "id": 3,
       "source": "Granola",
-      "title": "Co-invest — Reo Pack",
+      "title": "Co-invest: Reo Pack",
       "started_at": "2026-08-27",
       "duration_minutes": 32,
-      "summary": "Astrid is warm on Reo Pack but Northzone's packaging thesis sits with a different partner. She will take it to Monday's meeting rather than push it herself.\n\nHer read on the cap: fair for the traction, rich if the German certification slips past Q1. She has seen two comparable rounds price 15-20% lower in the last quarter.\n\nWe agreed to share diligence rather than duplicate it — she takes the technical certification path, we take the retail unit economics.",
+      "summary": "Astrid is warm on Reo Pack but Northzone's packaging thesis sits with a different partner. She will take it to Monday's meeting rather than push it herself.\n\nHer read on the cap: fair for the traction, rich if the German certification slips past Q1. She has seen two comparable rounds price 15-20% lower in the last quarter.\n\nWe agreed to share diligence rather than duplicate it, she takes the technical certification path, we take the retail unit economics.",
       "action_items": [
         "Send Astrid our retail unit economics model",
         "Wait for Northzone's Monday partner meeting"
       ],
       "has_transcript": true,
-      "people": ["Astrid Berg"],
-      "person_ids": [3]
+      "people": [
+        "Astrid Berg"
+      ],
+      "person_ids": [
+        3
+      ]
     },
     {
       "id": 4,
       "source": "Fireflies",
-      "title": "Voltiq — technical deep dive",
+      "title": "Voltiq: technical deep dive",
       "started_at": "2026-08-19",
       "duration_minutes": 58,
       "summary": "",
@@ -122,83 +136,117 @@
         "Request the single-customer pack data"
       ],
       "generated_model": "claude-sonnet-5",
-      "people": ["Mikael Lindqvist"],
-      "person_ids": [4]
+      "people": [
+        "Mikael Lindqvist"
+      ],
+      "person_ids": [
+        4
+      ]
     },
     {
       "id": 5,
       "source": "Fathom",
-      "title": "Fenja AI — intro, via Astrid",
+      "title": "Fenja AI: intro, via Astrid",
       "started_at": "2026-08-14",
       "duration_minutes": 28,
-      "summary": "Introductory call, warm intro from Astrid. Fenja is building compliance monitoring for Nordic banks — the pitch is that existing tooling is built for US regulation and fits Nordic requirements badly.\n\nTwo pilots running, both unpaid. Jonathan was clear that converting one to paid is the milestone before they raise.\n\nHe is not raising yet. Worth staying close.",
-      "action_items": ["Check back after the pilot conversion"],
+      "summary": "Introductory call, warm intro from Astrid. Fenja is building compliance monitoring for Nordic banks, the pitch is that existing tooling is built for US regulation and fits Nordic requirements badly.\n\nTwo pilots running, both unpaid. Jonathan was clear that converting one to paid is the milestone before they raise.\n\nHe is not raising yet. Worth staying close.",
+      "action_items": [
+        "Check back after the pilot conversion"
+      ],
       "has_transcript": false,
-      "people": ["Jonathan Hvid", "Astrid Berg"],
-      "person_ids": [2, 3]
+      "people": [
+        "Jonathan Hvid",
+        "Astrid Berg"
+      ],
+      "person_ids": [
+        2,
+        3
+      ]
     },
     {
       "id": 6,
       "source": "Tactiq",
-      "title": "Ember — intro call",
+      "title": "Ember: intro call",
       "started_at": "2026-07-30",
       "duration_minutes": 36,
       "summary": "",
       "action_items": [],
       "has_transcript": true,
-      "people": ["Sofia Almeida"],
-      "person_ids": [5]
+      "people": [
+        "Sofia Almeida"
+      ],
+      "person_ids": [
+        5
+      ]
     },
     {
       "id": 7,
       "source": "Fathom",
-      "title": "Reo Pack — August board observer call",
+      "title": "Reo Pack: August board observer call",
       "started_at": "2026-08-05",
       "duration_minutes": 52,
-      "summary": "Monthly update. Revenue €218k for July, up from €186k in June. Burn steady at €95k.\n\nThe Hamburg pilot went live on the 22nd with two chains rather than the three that were planned — the third pushed to September over shelf-space negotiations, not product.\n\nDavide flagged that their operations lead is leaving in October. He is not replacing the role directly; he wants to split it between two existing people and see if it holds.",
+      "summary": "Monthly update. Revenue €218k for July, up from €186k in June. Burn steady at €95k.\n\nThe Hamburg pilot went live on the 22nd with two chains rather than the three that were planned, the third pushed to September over shelf-space negotiations, not product.\n\nDavide flagged that their operations lead is leaving in October. He is not replacing the role directly; he wants to split it between two existing people and see if it holds.",
       "action_items": [
         "Ask about the operations handover plan in September",
         "Track whether the third Hamburg chain lands"
       ],
       "has_transcript": true,
-      "people": ["Davide Mazzanti"],
-      "person_ids": [1]
+      "people": [
+        "Davide Mazzanti"
+      ],
+      "person_ids": [
+        1
+      ]
     },
     {
       "id": 8,
       "source": "Granola",
-      "title": "Reo Pack — retail unit economics",
+      "title": "Reo Pack: retail unit economics",
       "started_at": "2026-05-21",
       "duration_minutes": 47,
       "summary": "Deep dive on the container economics. Cost per unit is €4.10 at current volume, falling to a modelled €2.85 at 500k units.\n\nThe return rate is the whole business: at 94% the unit pays back after 11 cycles. At 85% it never does. Every question worth asking about this company is a question about return rate.\n\nDavide's answer on why theirs holds: deposit value set deliberately high, and the collection points are inside the store rather than outside it.",
-      "action_items": ["Model the downside case at 85% return"],
+      "action_items": [
+        "Model the downside case at 85% return"
+      ],
       "has_transcript": true,
-      "people": ["Davide Mazzanti"],
-      "person_ids": [1]
+      "people": [
+        "Davide Mazzanti"
+      ],
+      "person_ids": [
+        1
+      ]
     },
     {
       "id": 9,
       "source": "Fathom",
-      "title": "Reo Pack — first meeting",
+      "title": "Reo Pack: first meeting",
       "started_at": "2026-02-11",
       "duration_minutes": 44,
-      "summary": "First conversation, inbound via the website. Reusable packaging for grocery retail, founded 2024, based in Rotterdam.\n\nTwo founders, both ex-Picnic. Davide ran operations there; his co-founder is technical.\n\nToo early for us at the time — pre-revenue, one letter of intent. Agreed to revisit once the first chain went live.",
+      "summary": "First conversation, inbound via the website. Reusable packaging for grocery retail, founded 2024, based in Rotterdam.\n\nTwo founders, both ex-Picnic. Davide ran operations there; his co-founder is technical.\n\nToo early for us at the time, pre-revenue, one letter of intent. Agreed to revisit once the first chain went live.",
       "action_items": [],
       "has_transcript": true,
-      "people": ["Davide Mazzanti"],
-      "person_ids": [1]
+      "people": [
+        "Davide Mazzanti"
+      ],
+      "person_ids": [
+        1
+      ]
     },
     {
       "id": 10,
       "source": "Granola",
-      "title": "Northzone — quarterly catch-up",
+      "title": "Northzone: quarterly catch-up",
       "started_at": "2026-06-03",
       "duration_minutes": 25,
-      "summary": "General catch-up with Astrid. Northzone has slowed materially on climate hardware — two write-downs last year made the partnership cautious on anything capital-intensive.\n\nShe is personally still interested and is looking for co-invest rather than lead positions in the space.\n\nWorth keeping her on the list for anything hardware-adjacent where we can lead.",
+      "summary": "General catch-up with Astrid. Northzone has slowed materially on climate hardware, two write-downs last year made the partnership cautious on anything capital-intensive.\n\nShe is personally still interested and is looking for co-invest rather than lead positions in the space.\n\nWorth keeping her on the list for anything hardware-adjacent where we can lead.",
       "action_items": [],
       "has_transcript": true,
-      "people": ["Astrid Berg"],
-      "person_ids": [3]
+      "people": [
+        "Astrid Berg"
+      ],
+      "person_ids": [
+        3
+      ]
     }
   ],
   "queries": [
@@ -207,12 +255,20 @@
       "raw_name": "Sofia A.",
       "raw_email": "",
       "resolution": "ambiguous",
-      "title": "Ember — intro call",
+      "title": "Ember: intro call",
       "started_at": "2026-07-30",
       "source": "Tactiq",
       "candidates": [
-        { "id": 5, "name": "Sofia Almeida", "detail": "Ember · sofia@ember.eco" },
-        { "id": 6, "name": "Sofia Andersson", "detail": "Klarna · sofia.a@klarna.com" }
+        {
+          "id": 5,
+          "name": "Sofia Almeida",
+          "detail": "Ember · sofia@ember.eco"
+        },
+        {
+          "id": 6,
+          "name": "Sofia Andersson",
+          "detail": "Klarna · sofia.a@klarna.com"
+        }
       ]
     },
     {
@@ -220,12 +276,20 @@
       "raw_name": "M. Lindqvist",
       "raw_email": "",
       "resolution": "ambiguous",
-      "title": "Voltiq — technical deep dive",
+      "title": "Voltiq: technical deep dive",
       "started_at": "2026-08-19",
       "source": "Fireflies",
       "candidates": [
-        { "id": 4, "name": "Mikael Lindqvist", "detail": "Voltiq · mikael@voltiq.se" },
-        { "id": 7, "name": "Marta Lindqvist", "detail": "Einride · marta@einride.tech" }
+        {
+          "id": 4,
+          "name": "Mikael Lindqvist",
+          "detail": "Voltiq · mikael@voltiq.se"
+        },
+        {
+          "id": 7,
+          "name": "Marta Lindqvist",
+          "detail": "Einride · marta@einride.tech"
+        }
       ]
     }
   ]
