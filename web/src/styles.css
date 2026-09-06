@@ -804,3 +804,112 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 .balance li::before { content: ''; position: absolute; left: 0; top: 7px; width: 6px; height: 6px; border-radius: 2px; border: 1px solid var(--line-lit); }
 .balance .none { font-size: 12.5px; color: var(--faint); font-style: italic; }
 .balance .kept-note { font-family: var(--mono); font-size: 9.5px; color: var(--sage); margin-top: 9px; }
+
+/* -- today --------------------------------------------------------------- */
+
+.record-inner.wide { max-width: 860px; }
+
+.today-head { margin-bottom: 26px; }
+.today-head h1 {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 32px;
+  letter-spacing: -0.012em;
+  margin: 0 0 4px;
+}
+.today-head p { margin: 0; color: var(--dim); font-size: 13.5px; }
+.today-owe { color: var(--amber); border-bottom: 1px solid rgba(224, 180, 85, 0.3); }
+.today-owe:hover { border-bottom-color: var(--amber); }
+
+.day { margin-bottom: 30px; }
+.day-label {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--faint);
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 14px;
+}
+
+.meeting {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--pane);
+  padding: 16px 18px;
+  margin-bottom: 11px;
+  animation: in 0.45s var(--ease) backwards;
+}
+/* The next one is the only thing on this screen that gets colour. */
+.meeting.next { border-color: rgba(255, 122, 69, 0.32); box-shadow: inset 3px 0 0 var(--ember); }
+
+.meeting-head { display: flex; gap: 16px; align-items: baseline; margin-bottom: 14px; }
+.meeting-when { flex: none; width: 74px; }
+.meeting-when b {
+  display: block;
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+.meeting-when span { font-family: var(--mono); font-size: 9.5px; color: var(--faint); }
+.meeting.next .meeting-when span { color: var(--ember); }
+
+.meeting h3 { margin: 0; font-size: 16px; font-weight: 500; letter-spacing: -0.008em; }
+.meeting-where { font-family: var(--mono); font-size: 9.5px; color: var(--faint); margin-top: 3px; }
+
+.prep { border-top: 1px solid var(--line); padding-top: 13px; margin-top: 13px; }
+.prep:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
+
+.prep-who { display: flex; align-items: center; gap: 10px; margin-bottom: 11px; }
+.prep-who .av { width: 28px; height: 28px; font-size: 10px; margin: 0; }
+.prep-who b { display: block; font-weight: 500; font-size: 14px; }
+.prep-who span span { display: block; font-size: 12px; color: var(--faint); }
+.prep-who:hover b { color: var(--ember); }
+
+.prep-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: 5px;
+}
+.prep-label.warn { color: var(--ember); }
+
+.prep-title { font-size: 13.5px; font-weight: 500; margin-bottom: 5px; }
+.prep-body {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--dim);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.prep-body.machine { color: #a9c4bd; border-left: 2px solid var(--sage-deep); padding-left: 11px; }
+
+.prep-loops { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 13px; }
+.prep-loops ul { list-style: none; margin: 0; padding: 0; }
+.prep-loops li {
+  position: relative;
+  padding-left: 14px;
+  font-size: 12.5px;
+  color: var(--dim);
+  margin-bottom: 4px;
+  line-height: 1.45;
+}
+.prep-loops li::before {
+  content: '';
+  position: absolute; left: 0; top: 7px;
+  width: 6px; height: 6px;
+  border-radius: 2px;
+  border: 1px solid var(--line-lit);
+}
+
+@media (max-width: 700px) {
+  .prep-loops { grid-template-columns: 1fr; gap: 12px; }
+  .balance { grid-template-columns: 1fr; }
+}
