@@ -14,6 +14,8 @@
  */
 
 import { Link } from 'react-router-dom'
+import Connect from '../components/Connect'
+import Stage from '../components/Stage'
 import {
   ago,
   allLoops,
@@ -109,7 +111,7 @@ function MeetingCard({ m, next }: { m: Meeting; next: boolean }) {
 }
 
 export default function Today() {
-  const { sample } = load()
+  const { people } = load()
   const meetings = upcoming()
   const loops = allLoops().filter(l => !l.done)
   const owed = loops.filter(l => l.owner === 'me')
@@ -123,15 +125,23 @@ export default function Today() {
     else days.push({ label, items: [m] })
   }
 
+  // Nothing in the library at all. Say what happens next rather than showing
+  // an empty day, which tells a new user nothing except that they are alone.
+  if (people.length === 0) {
+    return (
+      <div className="record">
+        <div className="record-inner wide">
+          <Stage />
+          <Connect />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="record">
       <div className="record-inner wide">
-        {sample && (
-          <div className="notice">
-            <span className="live" />
-            Sample record. Connect a source to replace it.
-          </div>
-        )}
+        <Stage />
 
         <div className="today-head">
           <h1>{new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</h1>

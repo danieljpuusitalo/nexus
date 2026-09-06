@@ -12,6 +12,7 @@
 import { Link, Navigate, useParams } from 'react-router-dom'
 import Conversation from '../components/Conversation'
 import Grid from '../components/Grid'
+import Stage from '../components/Stage'
 import {
   ago,
   balance,
@@ -30,7 +31,7 @@ import {
 export default function Person() {
   const { id } = useParams<{ id: string }>()
   const person = personById(Number(id))
-  const { sample, people } = load()
+  const { people } = load()
 
   // Landing on People with nobody chosen should not show an empty pane. Open
   // the most recent conversation, which is what someone came looking for far
@@ -68,12 +69,7 @@ export default function Person() {
   return (
     <div className="record">
       <div className="record-inner">
-        {sample && (
-          <div className="notice">
-            <span className="live" />
-            Sample record. Connect a source to replace it.
-          </div>
-        )}
+        <Stage />
 
         <div className="crumb">
           <Link to="/">People</Link>
@@ -209,7 +205,19 @@ export default function Person() {
           </div>
         )}
 
-        <Grid dates={dates} cell={10} gap={2} />
+        {/* A year of empty squares for someone you met once is technically
+            honest and reads as a broken feature. Say what is missing instead. */}
+        {conversations.length >= 3 ? (
+          <Grid dates={dates} cell={10} gap={2} />
+        ) : (
+          <div className="waiting">
+            <b>
+              {conversations.length} conversation{conversations.length === 1 ? '' : 's'} so far.
+            </b>{' '}
+            The rhythm of a relationship needs a few points before it means anything, so the pattern
+            appears here from the third.
+          </div>
+        )}
 
         {/* Descriptive, never a score. "Every 24 days, and it has been 3
             months" is actionable; "health: 62" invents a judgement the record

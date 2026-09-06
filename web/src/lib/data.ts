@@ -89,7 +89,82 @@ export interface Snapshot {
   queries: Query[]
 }
 
-const data = snapshot as unknown as Snapshot
+/**
+ * Library maturity.
+ *
+ * Everything in a demo runs on a full library, which hides the experience every
+ * real user actually starts in: two conversations, nobody to match, no rhythm
+ * to draw. A product that is beautiful at two hundred conversations and bleak
+ * at two never reaches two hundred, so the sparse states have to be designed
+ * rather than discovered.
+ *
+ * This lets the prototype be looked at from day one forward.
+ */
+export type Stage = 'new' | 'first' | 'early' | 'full'
+
+export const STAGES: { id: Stage; label: string; take: number }[] = [
+  { id: 'new', label: 'Day one', take: 0 },
+  { id: 'first', label: 'First call', take: 1 },
+  { id: 'early', label: 'First month', take: 3 },
+  { id: 'full', label: 'A year in', take: Infinity },
+]
+
+export function currentStage(): Stage {
+  const saved = typeof localStorage !== 'undefined' ? localStorage.getItem('nexus.stage') : null
+  return (STAGES.find(s => s.id === saved)?.id ?? 'full') as Stage
+}
+
+export function setStage(id: Stage): void {
+  localStorage.setItem('nexus.stage', id)
+  location.reload()
+}
+
+const full = snapshot as unknown as Snapshot
+
+/**
+ * Trims the record to a point in its own history and rebuilds everything
+ * derived from it, exactly as the real ledger would: people exist because
+ * conversations mention them, not the other way round.
+ */
+function project(stage: Stage): Snapshot {
+  const take = STAGES.find(s => s.id === stage)?.take ?? Infinity
+  if (take === Infinity) return full
+
+  const conversations = [...full.conversations]
+    .sort((a, b) => b.started_at.localeCompare(a.started_at))
+    .slice(0, take)
+
+  const seen = new Set(conversations.flatMap(c => c.person_ids))
+  const ids = new Set(conversations.map(c => c.id))
+
+  const people = full.people
+    .filter(p => seen.has(p.id))
+    .map(p => {
+      const theirs = conversations.filter(c => c.person_ids.includes(p.id))
+      const dates = theirs.map(c => c.started_at).sort()
+      return {
+        ...p,
+        conversations: theirs.length,
+        first_conversation_at: dates[0] ?? '',
+        last_conversation_at: dates[dates.length - 1] ?? '',
+        last_title: theirs[0]?.title ?? '',
+      }
+    })
+
+  return {
+    ...full,
+    conversations,
+    people,
+    queries: full.queries.filter(q => ids.has(q.id) || conversations.some(c => c.title === q.title)),
+    ...(({ signals, exchanges, upcoming }) => ({
+      signals: (signals ?? []).filter(x => ids.has(x.conversation_id)),
+      exchanges: (exchanges ?? []).filter(x => ids.has(x.conversation_id)),
+      upcoming: (upcoming ?? []).filter(u => u.person_ids.some(id => seen.has(id))),
+    }))(full as unknown as { signals?: Signal[]; exchanges?: Exchange[]; upcoming?: Upcoming[] }),
+  } as Snapshot
+}
+
+const data = project(currentStage())
 
 export function load(): Snapshot {
   return data
