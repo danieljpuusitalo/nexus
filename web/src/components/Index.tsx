@@ -14,16 +14,18 @@
 import { useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import Cadence from './Cadence'
-import { ago, bucket, initials, load, sourceName } from '../lib/data'
+import { ago, bucket, companies, initials, load, sourceName } from '../lib/data'
 
-type Mode = 'people' | 'stream'
+type Mode = 'people' | 'companies' | 'stream'
 
 export default function Index({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void }) {
   const { people, conversations } = load()
   const navigate = useNavigate()
   // This pane lives outside <Routes>, so it has no route params of its own.
   // The selected id has to come from the path, or nothing ever looks selected.
-  const selected = Number(useLocation().pathname.match(/^\/people\/(\d+)/)?.[1])
+  const path = useLocation().pathname
+  const selected = Number(path.match(/^\/people\/(\d+)/)?.[1])
+  const selectedOrg = path.match(/^\/company\/(.+)/)?.[1]
   const [q, setQ] = useState('')
 
   const dateIndex = useMemo(() => {
@@ -56,6 +58,13 @@ export default function Index({ mode, setMode }: { mode: Mode; setMode: (m: Mode
     return out
   }, [people, q])
 
+  const orgs = useMemo(() => {
+    const needle = q.trim().toLowerCase()
+    return companies().filter(c =>
+      !needle ? true : `${c.name} ${c.people.map(p => p.name).join(' ')}`.toLowerCase().includes(needle)
+    )
+  }, [q])
+
   const stream = useMemo(() => {
     const needle = q.trim().toLowerCase()
     return [...conversations]
@@ -80,8 +89,11 @@ export default function Index({ mode, setMode }: { mode: Mode; setMode: (m: Mode
           <button className={mode === 'people' ? 'on' : ''} onClick={() => setMode('people')}>
             People
           </button>
+          <button className={mode === 'companies' ? 'on' : ''} onClick={() => setMode('companies')}>
+            Companies
+          </button>
           <button className={mode === 'stream' ? 'on' : ''} onClick={() => setMode('stream')}>
-            Everything
+            All
           </button>
         </div>
       </div>
@@ -112,6 +124,26 @@ export default function Index({ mode, setMode }: { mode: Mode; setMode: (m: Mode
                 ))}
               </div>
             ))
+          : mode === 'companies'
+          ? orgs.map(c => (
+              <button
+                key={c.slug}
+                className={`row ${selectedOrg === c.slug ? 'on' : ''}`}
+                onClick={() => navigate(`/company/${c.slug}`)}
+              >
+                <span className="av org">{c.name.slice(0, 2).toUpperCase()}</span>
+                <span className="row-main">
+                  <span className="row-top">
+                    <b>{c.name}</b>
+                    <span className="when">{ago(c.lastAt)}</span>
+                  </span>
+                  <span className="row-sub">
+                    {c.people.map(p => p.name.split(' ')[0]).join(', ')} ·{' '}
+                    {c.conversations.length} conversation{c.conversations.length === 1 ? '' : 's'}
+                  </span>
+                </span>
+              </button>
+            ))
           : stream.map(c => (
               <button
                 key={c.id}
@@ -133,6 +165,7 @@ export default function Index({ mode, setMode }: { mode: Mode; setMode: (m: Mode
             ))}
 
         {((mode === 'people' && grouped.length === 0) ||
+          (mode === 'companies' && orgs.length === 0) ||
           (mode === 'stream' && stream.length === 0)) && (
           <p style={{ padding: '20px 16px', color: 'var(--faint)', fontSize: 13 }}>
             Nothing matches that.
