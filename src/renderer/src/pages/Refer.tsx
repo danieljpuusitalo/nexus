@@ -31,7 +31,7 @@ export default function Refer() {
   }
 
   function getReferralUrl() {
-    return `https://nexuscrm.app/r/${stats?.referralCode || ''}`
+    return `https://nexus.example.invalid/r/${stats?.referralCode || ''}`
   }
 
   async function handleCopy() {

@@ -94,8 +94,8 @@ serve(async (req) => {
     }
 
     // Create checkout session
-    const successUrl = Deno.env.get('CHECKOUT_SUCCESS_URL') || 'https://nexuscrm.app/success'
-    const cancelUrl = Deno.env.get('CHECKOUT_CANCEL_URL') || 'https://nexuscrm.app/pricing'
+    const successUrl = Deno.env.get('CHECKOUT_SUCCESS_URL') || 'https://nexus.example.invalid/success'
+    const cancelUrl = Deno.env.get('CHECKOUT_CANCEL_URL') || 'https://nexus.example.invalid/pricing'
 
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
       customer: customerId,
