@@ -240,6 +240,10 @@ const api = {
 
   // Onboarding
   // Meeting notes dropped in by Granola / Tactiq / Plaud / Fathom / ...
+  calendar: {
+    sync: (opts?: { daysBack?: number; daysForward?: number }) =>
+      ipcRenderer.invoke('calendar:sync', opts),
+  },
   ledger: {
     getForContact: (contactId: number, limit?: number) =>
       ipcRenderer.invoke('ledger:getForContact', contactId, limit),

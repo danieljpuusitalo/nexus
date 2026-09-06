@@ -7,6 +7,7 @@ import { registerIpcHandlers } from './ipc'
 import { startBriefingLoop, stopBriefingLoop } from './meeting-briefing'
 import { startGoogleContactsAutoSync, stopGoogleContactsAutoSync } from './google-contacts-sync'
 import { startNoteWatcher, stopNoteWatcher } from './note-ingest'
+import { syncCalendar } from './calendar-sync'
 import { startMicrosoftContactsAutoSync, stopMicrosoftContactsAutoSync } from './microsoft-contacts-sync'
 import { autoUpdater } from 'electron-updater'
 import { safeOpenExternal } from './url-validator'
@@ -216,8 +217,14 @@ app.whenReady().then(() => {
   // Start contact auto-sync loops (if enabled by user)
   startGoogleContactsAutoSync(getDatabase())
 
-  // Watch the meeting-notes folder (no-op until the user picks one)
-  startNoteWatcher(getDatabase())
+  // Cache the calendar before watching for notes. The calendar is what turns a
+  // transcript's display names into the attendee emails that identify people,
+  // so a note ingested before the first sync resolves worse than one ingested
+  // after it. Fire-and-forget: a calendar failure must never delay startup or
+  // stop notes being ingested.
+  void syncCalendar(getDatabase())
+    .catch(() => undefined)
+    .finally(() => startNoteWatcher(getDatabase()))
   startMicrosoftContactsAutoSync(getDatabase())
 
   createWindow()

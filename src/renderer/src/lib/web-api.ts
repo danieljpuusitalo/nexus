@@ -879,6 +879,10 @@ export function createWebApi() {
     // it can be served from Postgres when the web build gets a backend. Until
     // those tables exist in Supabase these return empty rather than throwing,
     // so the person view renders its empty state instead of an error.
+    calendar: {
+      sync: async () => ({ fetched: 0, stored: 0, error: 'Calendar sync runs in the desktop app' })
+    },
+
     ledger: {
       getForContact: async () => [],
       getParticipants: async () => [],
