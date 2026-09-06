@@ -805,7 +805,9 @@ export default function Settings() {
             ) : (
               <>
                 <p className="text-sm text-zinc-500">
-                  Connect your Anthropic API key to enable Copilot, smart reconnection messages, meeting briefings, and AI-powered tagging.
+                  Some notetakers hand over a transcript but no summary. Connect an Anthropic API
+                  key and Nexus writes one from the transcript, clearly labelled, with the original
+                  always one click away. Roughly a cent per conversation.
                 </p>
                 <div className="space-y-3 border border-zinc-200/60 dark:border-zinc-800/40 rounded-lg p-4 bg-zinc-50 dark:bg-zinc-900/30">
                   <p className="text-xs text-zinc-400">
