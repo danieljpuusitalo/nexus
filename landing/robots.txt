@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://nexuscrm.app/sitemap.xml
+Sitemap: https://nexus.example.invalid/sitemap.xml

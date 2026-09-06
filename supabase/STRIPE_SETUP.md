@@ -35,8 +35,8 @@ supabase secrets set STRIPE_WEBHOOK_SECRET=whsec_xxx
 supabase secrets set STRIPE_PRICE_PRO_MONTHLY=price_xxx
 supabase secrets set STRIPE_PRICE_PRO_ANNUAL=price_xxx
 supabase secrets set STRIPE_PRICE_LIFETIME=price_xxx
-supabase secrets set CHECKOUT_SUCCESS_URL=https://nexuscrm.app/success
-supabase secrets set CHECKOUT_CANCEL_URL=https://nexuscrm.app/#pricing
+supabase secrets set CHECKOUT_SUCCESS_URL=https://nexus.example.invalid/success
+supabase secrets set CHECKOUT_CANCEL_URL=https://nexus.example.invalid/#pricing
 ```
 
 ## 5. Deploy Edge Functions
