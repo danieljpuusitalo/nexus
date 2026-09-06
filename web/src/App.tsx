@@ -7,6 +7,7 @@ import Review from './routes/Review'
 import Loops from './routes/Loops'
 import Today from './routes/Today'
 import Help from './routes/Help'
+import Company from './routes/Company'
 import { AskIcon, GiveIcon, LoopIcon, PeopleIcon, TodayIcon } from './components/Icons'
 import { allLoops, initials, introductions, load } from './lib/data'
 
@@ -57,7 +58,7 @@ function Rail() {
  * be noise.
  */
 function Shell() {
-  const [mode, setMode] = useState<'people' | 'stream'>('people')
+  const [mode, setMode] = useState<'people' | 'companies' | 'stream'>('people')
   const [palette, setPalette] = useState(false)
   const location = useLocation()
   // The index is a list of people. Loops and review are queues of questions,
@@ -97,6 +98,7 @@ function Shell() {
         <Route path="/" element={<Today />} />
         <Route path="/people" element={<Person />} />
         <Route path="/people/:id" element={<Person />} />
+        <Route path="/company/:slug" element={<Company />} />
         <Route path="/loops" element={<Loops />} />
         <Route path="/help" element={<Help />} />
         <Route path="/review" element={<Review />} />

@@ -104,6 +104,7 @@ export default function Conversation({
                   <span className={`owner ${p.owner}`}>{p.owner === 'me' ? 'You' : 'They'}</span>
                   {p.text}
                   {p.due && !p.done && <span className="by">by {shortDate(p.due)}</span>}
+                  {p.closed_by && <span className="noticed">closed by the record</span>}
                 </li>
               ))}
             </ul>

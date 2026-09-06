@@ -137,7 +137,8 @@
         {
           "text": "Send Astrid our retail unit economics model",
           "owner": "me",
-          "done": true
+          "done": true,
+          "closed_by": 1
         },
         {
           "text": "Take Reo Pack to Northzone's Monday partner meeting",
@@ -234,7 +235,8 @@
         {
           "text": "Ask about the operations handover plan",
           "owner": "me",
-          "done": true
+          "done": true,
+          "closed_by": 1
         },
         {
           "text": "Confirm whether the third Hamburg chain lands",
@@ -261,7 +263,8 @@
         {
           "text": "Model the downside case at 85% return",
           "owner": "me",
-          "done": true
+          "done": true,
+          "closed_by": 7
         }
       ]
     },

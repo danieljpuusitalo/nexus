@@ -23,6 +23,14 @@ export interface Commitment {
   done: boolean
   /** ISO date, when one was actually stated. Most are not. */
   due?: string
+  /**
+   * The conversation that showed this had happened.
+   *
+   * Nobody ticked it. A later call referred to the thing as done, and the
+   * record closed it. Bookkeeping the user did not have to do is the only
+   * bookkeeping that survives contact with a real week.
+   */
+  closed_by?: number
 }
 
 export interface Conversation {
@@ -246,6 +254,8 @@ export function sourceMix(convs: Conversation[]): { source: string; n: number }[
 /* ----------------------------------------------------------- commitments -- */
 
 export interface OpenLoop extends Commitment {
+  /** Title of the conversation that closed it, when one did. */
+  closedIn?: string
   conversationId: number
   conversationTitle: string
   agreedAt: string
@@ -279,6 +289,9 @@ export function allLoops(): OpenLoop[] {
       if (personId === undefined) continue
       out.push({
         ...commitment,
+        closedIn: commitment.closed_by
+          ? data.conversations.find(x => x.id === commitment.closed_by)?.title
+          : undefined,
         conversationId: c.id,
         conversationTitle: c.title,
         agreedAt: c.started_at,
@@ -609,4 +622,61 @@ export function standings(): Standing[] {
       }
     })
     .sort((a, b) => b.net - a.net)
+}
+
+/* ------------------------------------------------------------- companies -- */
+
+export interface Company {
+  name: string
+  slug: string
+  people: Person[]
+  conversations: Conversation[]
+  lastAt: string
+}
+
+export function slugify(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+}
+
+/**
+ * Companies are derived, never entered.
+ *
+ * Nobody creates an organisation record or assigns anyone to it. A company
+ * exists because two people you spoke to work at the same place, which the
+ * record already knows. It matters at scale: past a couple of hundred people,
+ * "everything we have with Reo Pack" is the question you actually have, and
+ * "Davide, then Ana, then whoever else" is not an answer.
+ */
+export function companies(): Company[] {
+  const byName = new Map<string, Person[]>()
+  for (const p of load().people) {
+    if (!p.company) continue
+    byName.set(p.company, [...(byName.get(p.company) ?? []), p])
+  }
+
+  return [...byName.entries()]
+    .map(([name, people]) => {
+      const ids = new Set(people.map(p => p.id))
+      const conversations = load()
+        .conversations.filter(c => c.person_ids.some(id => ids.has(id)))
+        .sort((a, b) => b.started_at.localeCompare(a.started_at))
+      return {
+        name,
+        slug: slugify(name),
+        people,
+        conversations,
+        lastAt: conversations[0]?.started_at ?? '',
+      }
+    })
+    .sort((a, b) => b.lastAt.localeCompare(a.lastAt))
+}
+
+export function companyBySlug(slug: string): Company | undefined {
+  return companies().find(c => c.slug === slug)
+}
+
+/** Every open commitment across everyone at one company. */
+export function loopsForCompany(c: Company): OpenLoop[] {
+  const ids = new Set(c.people.map(p => p.id))
+  return allLoops().filter(l => ids.has(l.personId))
 }

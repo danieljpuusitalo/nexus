@@ -23,6 +23,7 @@ import {
   longDate,
   personById,
   rhythm,
+  slugify,
   sourceMix,
 } from '../lib/data'
 
@@ -85,7 +86,11 @@ export default function Person() {
           <div style={{ minWidth: 0, flex: 1 }}>
             <h1>{person.name}</h1>
             <div className="under">
-              {[person.role, person.company].filter(Boolean).join(', ')}
+              {person.role}
+              {person.role && person.company ? ', ' : ''}
+              {person.company && (
+                <Link to={`/company/${slugify(person.company)}`}>{person.company}</Link>
+              )}
               {person.email && (
                 <>
                   {' · '}
