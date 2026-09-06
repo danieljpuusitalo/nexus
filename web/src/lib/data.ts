@@ -153,3 +153,70 @@ export function sourceName(source: string): string {
   if (!source || source === 'file') return 'Imported'
   return source
 }
+
+/* -------------------------------------------------------------- analysis -- */
+
+/**
+ * How a relationship actually behaves over time.
+ *
+ * Deliberately descriptive rather than a score. "Every 24 days on average, but
+ * you have not spoken in 3 months" is something you can act on; "relationship
+ * health: 62" is not, and it invents a judgement the record cannot support.
+ */
+export interface Rhythm {
+  /** Mean days between conversations. Null when there is only one. */
+  averageGap: number | null
+  /** The longest silence between two conversations. */
+  longestGap: number | null
+  /** Days since the last conversation. */
+  sinceLast: number
+  /** True when the current silence is well past this person's own normal. */
+  overdue: boolean
+  busiestMonth: string | null
+}
+
+export function rhythm(dates: string[]): Rhythm {
+  const times = dates
+    .map(d => new Date(d.length <= 10 ? `${d}T00:00:00` : d).getTime())
+    .filter(t => !Number.isNaN(t))
+    .sort((a, b) => a - b)
+
+  const sinceLast = times.length
+    ? Math.floor((Date.now() - times[times.length - 1]) / 86_400_000)
+    : 0
+
+  if (times.length < 2) {
+    return { averageGap: null, longestGap: null, sinceLast, overdue: false, busiestMonth: null }
+  }
+
+  const gaps: number[] = []
+  for (let i = 1; i < times.length; i++) gaps.push((times[i] - times[i - 1]) / 86_400_000)
+  const averageGap = Math.round(gaps.reduce((a, b) => a + b, 0) / gaps.length)
+  const longestGap = Math.round(Math.max(...gaps))
+
+  const byMonth = new Map<string, number>()
+  for (const t of times) {
+    const m = new Date(t).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
+    byMonth.set(m, (byMonth.get(m) ?? 0) + 1)
+  }
+  const busiestMonth = [...byMonth.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
+
+  return {
+    averageGap,
+    longestGap,
+    sinceLast,
+    // Past twice their own normal cadence is a fact about this relationship,
+    // not a generic threshold applied to everyone.
+    overdue: sinceLast > averageGap * 2,
+    busiestMonth,
+  }
+}
+
+/** Which tools captured a person's conversations, most used first. */
+export function sourceMix(convs: Conversation[]): { source: string; n: number }[] {
+  const m = new Map<string, number>()
+  for (const c of convs) m.set(c.source, (m.get(c.source) ?? 0) + 1)
+  return [...m.entries()]
+    .map(([source, n]) => ({ source, n }))
+    .sort((a, b) => b.n - a.n)
+}

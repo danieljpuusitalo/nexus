@@ -11,8 +11,17 @@
 
 import { Link, useParams } from 'react-router-dom'
 import Conversation from '../components/Conversation'
-import Cadence from '../components/Cadence'
-import { ago, conversationsFor, initials, load, longDate, personById } from '../lib/data'
+import Grid from '../components/Grid'
+import {
+  ago,
+  conversationsFor,
+  initials,
+  load,
+  longDate,
+  personById,
+  rhythm,
+  sourceMix,
+} from '../lib/data'
 
 export default function Person() {
   const { id } = useParams<{ id: string }>()
@@ -36,6 +45,9 @@ export default function Person() {
 
   const conversations = conversationsFor(person.id)
   const machine = conversations.filter(c => !c.summary && c.generated_summary).length
+  const dates = conversations.map(c => c.started_at)
+  const r = rhythm(dates)
+  const mix = sourceMix(conversations)
 
   return (
     <div className="record">
@@ -90,8 +102,38 @@ export default function Person() {
           )}
         </div>
 
-        <div style={{ marginBottom: 24 }}>
-          <Cadence dates={conversations.map(c => c.started_at)} />
+        <Grid dates={dates} cell={10} gap={2} />
+
+        {/* Descriptive, never a score. "Every 24 days, and it has been 3
+            months" is actionable; "health: 62" invents a judgement the record
+            cannot support. */}
+        <div className="reads">
+          {r.averageGap !== null && (
+            <span>
+              Speaks about every <b>{r.averageGap} days</b>
+            </span>
+          )}
+          {r.longestGap !== null && (
+            <span>
+              Longest silence <b>{r.longestGap} days</b>
+            </span>
+          )}
+          {r.busiestMonth && (
+            <span>
+              Busiest <b>{r.busiestMonth}</b>
+            </span>
+          )}
+          {mix.length > 0 && (
+            <span>
+              Captured by <b>{mix.map(m => m.source).join(', ')}</b>
+            </span>
+          )}
+          {r.overdue && (
+            <span className="flag">
+              <b style={{ color: 'inherit' }}>{r.sinceLast} days</b> since you spoke, past your
+              usual
+            </span>
+          )}
         </div>
 
         {conversations.length === 0 ? (
