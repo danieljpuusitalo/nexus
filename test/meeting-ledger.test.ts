@@ -56,6 +56,20 @@ function makeDb(): Database.Database {
       ical_uid TEXT DEFAULT '',
       UNIQUE(source, source_id)
     );
+    CREATE TABLE calendar_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      provider TEXT NOT NULL DEFAULT 'google',
+      provider_event_id TEXT NOT NULL,
+      ical_uid TEXT DEFAULT '',
+      title TEXT DEFAULT '',
+      started_at TEXT NOT NULL,
+      ended_at TEXT DEFAULT '',
+      organizer_email TEXT DEFAULT '',
+      attendees_json TEXT NOT NULL DEFAULT '[]',
+      is_all_day INTEGER NOT NULL DEFAULT 0,
+      synced_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(provider, provider_event_id)
+    );
     CREATE TABLE meeting_participants (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       meeting_id INTEGER NOT NULL,
@@ -226,6 +240,108 @@ describe('recordMeeting', () => {
     expect(
       (db.prepare('SELECT COUNT(*) AS c FROM meeting_participants').get() as { c: number }).c
     ).toBe(1)
+  })
+})
+
+describe('calendar-scoped resolution', () => {
+  function addEvent(over: Record<string, unknown> = {}): void {
+    const row = {
+      provider_event_id: 'evt-1',
+      ical_uid: 'abc123@google.com',
+      title: 'Series A intro',
+      started_at: '2026-09-04T14:00:00Z',
+      ended_at: '2026-09-04T15:00:00Z',
+      organizer_email: 'daniel@4impact.vc',
+      attendees_json: JSON.stringify([
+        { email: 'david@one.com', displayName: 'David Smith' },
+        { email: 'daniel@4impact.vc', displayName: 'Daniel Uusitalo', self: true },
+      ]),
+      is_all_day: 0,
+      ...over,
+    }
+    db.prepare(
+      `INSERT INTO calendar_events
+        (provider, provider_event_id, ical_uid, title, started_at, ended_at,
+         organizer_email, attendees_json, is_all_day)
+       VALUES ('google', ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(
+      row.provider_event_id, row.ical_uid, row.title, row.started_at,
+      row.ended_at, row.organizer_email, row.attendees_json, row.is_all_day
+    )
+  }
+
+  // The whole point of the calendar: "David Smith" is hopeless against the full
+  // contact table, but trivial against the two people actually invited.
+  it('disambiguates a name the global resolver refuses to guess at', () => {
+    db.prepare('INSERT INTO contacts (first_name, last_name, email) VALUES (?,?,?)').run(
+      'David', 'Smith', 'david@one.com'
+    )
+    db.prepare('INSERT INTO contacts (first_name, last_name, email) VALUES (?,?,?)').run(
+      'David', 'Smith', 'david@two.com'
+    )
+    addEvent()
+
+    const r = recordMeeting(db, meeting({ participants: [{ name: 'David Smith' }] }), SELF)
+    const p = r.participants[0]
+
+    expect(p.contactId).not.toBeNull()
+    expect(p.resolution).toBe('calendar_scoped')
+    expect(p.resolvedVia).toBe('calendar-attendee')
+
+    // Without the calendar this exact input resolves to nobody — see
+    // "marks an ambiguous name rather than linking it" above.
+    const link = db.prepare('SELECT * FROM meeting_participants').get() as Record<string, unknown>
+    expect(link.resolution).toBe('calendar_scoped')
+  })
+
+  it('records which calendar event the meeting came from', () => {
+    addEvent()
+    const r = recordMeeting(db, meeting({ participants: [{ name: 'David Smith' }] }), SELF)
+    const row = db.prepare('SELECT * FROM meetings WHERE id = ?').get(r.meetingId) as
+      Record<string, unknown>
+    expect(row.calendar_event_id).not.toBeNull()
+    // ical_uid is the key two tools' captures of one meeting reconcile on.
+    expect(row.ical_uid).toBe('abc123@google.com')
+  })
+
+  it('still refuses when two people on the invitation share the name', () => {
+    db.prepare('INSERT INTO contacts (first_name, last_name, email) VALUES (?,?,?)').run(
+      'David', 'Smith', 'david@one.com'
+    )
+    addEvent({
+      attendees_json: JSON.stringify([
+        { email: 'david@one.com', displayName: 'David Smith' },
+        { email: 'david.smith@other.com', displayName: 'David Smith' },
+      ]),
+    })
+    const r = recordMeeting(db, meeting({ participants: [{ name: 'David Smith' }] }), SELF)
+    expect(r.participants[0].resolution).not.toBe('calendar_scoped')
+  })
+
+  it('treats an attendee who is the user as self, even under another address', () => {
+    addEvent({
+      attendees_json: JSON.stringify([
+        { email: 'daniel@4impact.vc', displayName: 'Daniel U' },
+        { email: 'david@one.com', displayName: 'David Smith' },
+      ]),
+    })
+    const r = recordMeeting(db, meeting({ participants: [{ name: 'Daniel U' }] }), SELF)
+    expect(r.participants[0].isSelf).toBe(true)
+  })
+
+  // The calendar is an enrichment, never a precondition.
+  it('records the meeting when no calendar event matches', () => {
+    const r = recordMeeting(db, meeting(), SELF)
+    expect(r.created).toBe(true)
+    const row = db.prepare('SELECT calendar_event_id FROM meetings').get() as
+      { calendar_event_id: number | null }
+    expect(row.calendar_event_id).toBeNull()
+  })
+
+  it('records the meeting even if the calendar table is missing entirely', () => {
+    db.exec('DROP TABLE calendar_events')
+    const r = recordMeeting(db, meeting(), SELF)
+    expect(r.created).toBe(true)
   })
 })
 

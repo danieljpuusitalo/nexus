@@ -17,6 +17,8 @@
 
 import type Database from 'better-sqlite3'
 import { resolvePerson, loadContacts, normaliseName, type ContactRow } from './person-resolver'
+import { findEventForMeeting, scopedEmailFor } from './calendar-match'
+import { attendeesOf, type CalendarAttendee } from './calendar-sync'
 
 /** A participant as a source hands them to us, before we know who they are. */
 export interface RawParticipant {
@@ -109,7 +111,9 @@ export function resolveParticipants(
   db: Database.Database,
   participants: RawParticipant[],
   self: SelfIdentity,
-  cache?: ContactRow[]
+  cache?: ContactRow[],
+  /** Attendees of the calendar event this meeting was matched to, if any. */
+  calendarAttendees?: CalendarAttendee[]
 ): ResolvedParticipant[] {
   const contacts = cache ?? loadContacts(db)
   const byId = new Map(contacts.map(c => [c.id, c]))
@@ -129,6 +133,40 @@ export function resolveParticipants(
         resolution: 'unresolved' as ResolutionTier,
         resolvedVia: 'self',
         isSelf: true,
+      }
+    }
+
+    // Calendar first. A display name resolved against the five people actually
+    // invited is a local, near-certain answer; the same name against the whole
+    // contact table is a global, ambiguous one. Only worth trying when the
+    // source gave us a name and no address of its own.
+    if (!email && raw.name && calendarAttendees && calendarAttendees.length > 0) {
+      const scoped = scopedEmailFor(raw.name, calendarAttendees)
+      if (scoped) {
+        // Self can be named on the invitation under an address the capture
+        // never mentioned.
+        if (self.emails.has(scoped)) {
+          return {
+            raw,
+            contactId: null,
+            contactName: '',
+            resolution: 'unresolved' as ResolutionTier,
+            resolvedVia: 'self',
+            isSelf: true,
+          }
+        }
+        const hit = resolvePerson(db, { email: scoped }, contacts)
+        if (hit.contactId !== null) {
+          const c = byId.get(hit.contactId)
+          return {
+            raw,
+            contactId: hit.contactId,
+            contactName: c ? `${c.first_name} ${c.last_name}`.trim() : '',
+            resolution: 'calendar_scoped' as ResolutionTier,
+            resolvedVia: 'calendar-attendee',
+            isSelf: false,
+          }
+        }
       }
     }
 
@@ -212,7 +250,30 @@ export function recordMeeting(
     .prepare('SELECT id FROM meetings WHERE source = ? AND source_id = ?')
     .get(meeting.source, meeting.sourceId) as { id: number } | undefined
 
-  const resolved = mergeResolved(resolveParticipants(db, meeting.participants, self))
+  // Find the calendar event this capture came from, unless the source already
+  // told us (an API connector may know its own event id). The event's attendee
+  // list is what turns display-name resolution from a global guess into a local
+  // near-certainty, so this happens before participants are resolved.
+  let calendarEventId = meeting.calendarEventId ?? null
+  let icalUid = meeting.icalUid || ''
+  let attendees: CalendarAttendee[] = []
+
+  if (calendarEventId === null) {
+    const match = findEventForMeeting(db, {
+      startedAt: meeting.startedAt,
+      title: meeting.title,
+      participantNames: meeting.participants.map(p => p.name || '').filter(Boolean),
+    })
+    if (match) {
+      calendarEventId = match.event.id
+      icalUid = icalUid || match.event.ical_uid
+      attendees = attendeesOf(match.event)
+    }
+  }
+
+  const resolved = mergeResolved(
+    resolveParticipants(db, meeting.participants, self, undefined, attendees)
+  )
 
   // Already in the ledger. Nothing is written and nothing is overwritten — a
   // re-scan must not clobber a link a human corrected by hand. `created: false`
@@ -255,8 +316,8 @@ export function recordMeeting(
       meeting.transcript || '',
       summary ? 1 : 0,
       meeting.rawFileName || '',
-      meeting.calendarEventId ?? null,
-      meeting.icalUid || ''
+      calendarEventId,
+      icalUid
     )
     meetingId = Number(info.lastInsertRowid)
 

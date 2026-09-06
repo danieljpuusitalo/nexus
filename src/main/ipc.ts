@@ -39,6 +39,7 @@ import {
   startNoteWatcher,
   stopNoteWatcher,
 } from './note-ingest'
+import { syncCalendar } from './calendar-sync'
 import {
   getMeetingsForContact,
   getParticipants,
@@ -2477,7 +2478,17 @@ export function registerIpcHandlers(): void {
     return { ok: true }
   })
 
-  safeHandle('notes:scanNow', () => scanNoteFolder(db))
+  // Refresh the calendar first: it supplies the attendee emails that resolve
+  // display names, so scanning before syncing resolves strictly worse. A
+  // calendar failure is not a scan failure — the sync fails soft by contract.
+  safeHandle('notes:scanNow', async () => {
+    await syncCalendar(db)
+    return scanNoteFolder(db)
+  })
+
+  safeHandle('calendar:sync', (_e: unknown, opts?: { daysBack?: number; daysForward?: number }) =>
+    syncCalendar(db, opts)
+  )
 
   safeHandle('notes:getRecent', (_e: unknown, limit?: number) =>
     getRecentImports(db, typeof limit === 'number' ? limit : 20)
