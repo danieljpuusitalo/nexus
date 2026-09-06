@@ -1,0 +1,315 @@
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { DatabaseSync } from 'node:sqlite'
+import type Database from 'better-sqlite3'
+import fs from 'fs'
+import os from 'os'
+import path from 'path'
+import {
+  ingestFile,
+  scanNoteFolder,
+  matchNoteToContacts,
+  setNotesFolder,
+  getNotesFolder,
+  getRecentImports,
+  getSelfIdentifiers,
+} from '../src/main/note-ingest'
+import { parseMeetingNote } from '../src/main/meeting-note-parser'
+
+/**
+ * Minimal slice of the real schema — just what ingestion touches.
+ *
+ * Uses Node's built-in SQLite rather than better-sqlite3: the bundled copy of
+ * better-sqlite3 is compiled against Electron's ABI by `install-app-deps`, so
+ * it cannot load in a plain Node test process. node:sqlite runs the same SQL
+ * without a second native build. The only API gap is `.transaction()`, shimmed
+ * below to match better-sqlite3's "returns a callable" contract.
+ */
+function makeDb(): Database.Database {
+  const raw = new DatabaseSync(':memory:')
+  const db = raw as unknown as Database.Database & { transaction: unknown }
+  db.transaction = (fn: () => void) => () => {
+    raw.exec('BEGIN')
+    try {
+      fn()
+      raw.exec('COMMIT')
+    } catch (err) {
+      raw.exec('ROLLBACK')
+      throw err
+    }
+  }
+  // These two mirror src/main/database.ts exactly — including the CHECK
+  // constraint on interactions.type, so a wrong type here fails the test
+  // instead of failing at runtime.
+  db.exec(`
+    CREATE TABLE contacts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      first_name TEXT NOT NULL,
+      last_name TEXT DEFAULT '',
+      email TEXT DEFAULT '',
+      company TEXT DEFAULT '',
+      notes TEXT DEFAULT '',
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      cloud_id TEXT DEFAULT NULL,
+      synced_at TEXT DEFAULT NULL,
+      deleted_at TEXT DEFAULT NULL
+    );
+    CREATE TABLE interactions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      contact_id INTEGER NOT NULL,
+      type TEXT NOT NULL CHECK(type IN ('email', 'call', 'meeting', 'note', 'coffee', 'event', 'calendar', 'job_change', 'other')),
+      description TEXT DEFAULT '',
+      date TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      cloud_id TEXT DEFAULT NULL,
+      synced_at TEXT DEFAULT NULL,
+      deleted_at TEXT DEFAULT NULL,
+      FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE
+    );
+    CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT);
+    CREATE TABLE note_imports (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      file_hash TEXT NOT NULL UNIQUE,
+      file_name TEXT NOT NULL,
+      title TEXT DEFAULT '',
+      note_date TEXT DEFAULT '',
+      source TEXT DEFAULT '',
+      matched_count INTEGER NOT NULL DEFAULT 0,
+      unmatched_json TEXT NOT NULL DEFAULT '[]',
+      summary TEXT DEFAULT '',
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+  `)
+  db.prepare('INSERT INTO contacts (first_name, last_name, email) VALUES (?, ?, ?)').run(
+    'Sarah', 'Chen', 'sarah@acmerobotics.com'
+  )
+  db.prepare('INSERT INTO contacts (first_name, last_name, email) VALUES (?, ?, ?)').run(
+    'Marta', 'Nowak', 'marta@example.com'
+  )
+  return db
+}
+
+let db: Database.Database
+let dir: string
+
+beforeEach(() => {
+  db = makeDb()
+  dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nexus-notes-'))
+})
+
+afterEach(() => {
+  db.close()
+  fs.rmSync(dir, { recursive: true, force: true })
+})
+
+function writeNote(name: string, content: string): string {
+  const p = path.join(dir, name)
+  fs.writeFileSync(p, content, 'utf8')
+  return p
+}
+
+function interactionCount(): number {
+  return (db.prepare('SELECT COUNT(*) AS c FROM interactions').get() as { c: number }).c
+}
+
+const GRANOLA_NOTE = `# Series A intro — Acme Robotics
+
+Date: 2026-09-04
+Attendees: Sarah Chen <sarah@acmerobotics.com>
+
+## Summary
+ARR is ~€1.2M, growing 15% MoM. Raising €6M at a €30M pre.
+`
+
+/** Shape of a real Tactiq export: display names only, no emails, US slash date. */
+const TACTIQ_NOTE = `# Davide Mazzanti and Daniel Uusitalo
+
+  Meeting started: 7/16/2026, 2:31:14 PM
+  Duration: 34 minutes
+  Participants: Daniel Uusitalo, Davide Mazzanti
+
+  [View original transcript](https://app.tactiq.io/api/2/u/m/r/abc?o=txt)
+`
+
+describe('matchNoteToContacts', () => {
+  it('matches on email', () => {
+    const note = parseMeetingNote(GRANOLA_NOTE, 'acme.md')
+    const { matched } = matchNoteToContacts(db, note)
+    expect(matched).toHaveLength(1)
+    expect(matched[0].name).toBe('Sarah Chen')
+  })
+
+  it('matches on display name when there is no email', () => {
+    const note = parseMeetingNote('Attendees: Marta Nowak\n\nCaught up.', 'x.md')
+    const { matched } = matchNoteToContacts(db, note)
+    expect(matched.map(m => m.name)).toContain('Marta Nowak')
+  })
+
+  it('reports attendees it could not place', () => {
+    const note = parseMeetingNote('Attendees: nobody@nowhere.com\n\nHi.', 'x.md')
+    const { matched, unmatched } = matchNoteToContacts(db, note)
+    expect(matched).toHaveLength(0)
+    expect(unmatched).toContain('nobody@nowhere.com')
+  })
+
+  it('excludes the user themselves', () => {
+    db.prepare('INSERT INTO contacts (first_name, last_name, email) VALUES (?,?,?)').run(
+      'Daniel', 'Uusitalo', 'daniel@4impact.vc'
+    )
+    db.prepare("INSERT INTO settings (key, value) VALUES ('google_email', 'daniel@4impact.vc')").run()
+    const note = parseMeetingNote(
+      'Attendees: daniel@4impact.vc, sarah@acmerobotics.com\n\nNotes.',
+      'x.md'
+    )
+    const { matched } = matchNoteToContacts(db, note)
+    expect(matched.map(m => m.name)).toEqual(['Sarah Chen'])
+  })
+
+  // Regression: real Tactiq exports list participants by display name only, with
+  // no email anywhere in the file. Excluding self by email alone meant the user
+  // was filed as an attendee of every one of their own meetings.
+  it('excludes the user by NAME when the note carries no emails', () => {
+    db.prepare('INSERT INTO contacts (first_name, last_name, email) VALUES (?,?,?)').run(
+      'Daniel', 'Uusitalo', ''
+    )
+    db.prepare('INSERT INTO contacts (first_name, last_name, email) VALUES (?,?,?)').run(
+      'Davide', 'Mazzanti', ''
+    )
+    db.prepare("INSERT INTO settings (key, value) VALUES ('notes_own_name', 'Daniel Uusitalo')").run()
+    const note = parseMeetingNote(TACTIQ_NOTE, 'Davide Mazzanti and Daniel Uusitalo.txt')
+    const { matched } = matchNoteToContacts(db, note)
+    expect(matched.map(m => m.name)).toEqual(['Davide Mazzanti'])
+  })
+
+  it('infers the user\'s name from the connected Google account', () => {
+    db.prepare('INSERT INTO contacts (first_name, last_name, email) VALUES (?,?,?)').run(
+      'Daniel', 'Uusitalo', 'daniel@4impact.vc'
+    )
+    db.prepare("INSERT INTO settings (key, value) VALUES ('google_email', 'daniel@4impact.vc')").run()
+    const self = getSelfIdentifiers(db)
+    expect(self.names.has('daniel uusitalo')).toBe(true)
+  })
+
+  it('does not report the user as an unmatched attendee', () => {
+    db.prepare("INSERT INTO settings (key, value) VALUES ('notes_own_name', 'Daniel Uusitalo')").run()
+    const note = parseMeetingNote(TACTIQ_NOTE, 'x.txt')
+    const { unmatched } = matchNoteToContacts(db, note)
+    expect(unmatched).not.toContain('Daniel Uusitalo')
+  })
+
+  it('ignores soft-deleted contacts', () => {
+    db.prepare("UPDATE contacts SET deleted_at = '2026-01-01' WHERE email = 'sarah@acmerobotics.com'").run()
+    const note = parseMeetingNote(GRANOLA_NOTE, 'acme.md')
+    expect(matchNoteToContacts(db, note).matched).toHaveLength(0)
+  })
+})
+
+describe('ingestFile', () => {
+  it('creates an interaction against the matched contact', () => {
+    ingestFile(db, writeNote('acme.md', GRANOLA_NOTE))
+    const rows = db.prepare('SELECT * FROM interactions').all() as {
+      contact_id: number; type: string; description: string; date: string
+    }[]
+    expect(rows).toHaveLength(1)
+    expect(rows[0].type).toBe('meeting')
+    expect(rows[0].date).toBe('2026-09-04')
+    expect(rows[0].description).toContain('ARR is ~€1.2M')
+  })
+
+  it('does not re-import the same content twice', () => {
+    const p = writeNote('acme.md', GRANOLA_NOTE)
+    expect(ingestFile(db, p)).not.toBeNull()
+    expect(ingestFile(db, p)).toBeNull()
+    expect(interactionCount()).toBe(1)
+  })
+
+  it('treats a renamed copy as already imported', () => {
+    ingestFile(db, writeNote('acme.md', GRANOLA_NOTE))
+    // Same content, different filename — a sync folder does this constantly.
+    expect(ingestFile(db, writeNote('acme-copy.md', GRANOLA_NOTE))).toBeNull()
+    expect(interactionCount()).toBe(1)
+  })
+
+  it('logs one interaction per attendee for a group meeting', () => {
+    ingestFile(db, writeNote('sync.md',
+      'Attendees: sarah@acmerobotics.com, marta@example.com\nDate: 2026-06-01\n\nQuarterly sync.'
+    ))
+    expect(interactionCount()).toBe(2)
+  })
+
+  it('still records a note that matched nobody, so it is not lost', () => {
+    ingestFile(db, writeNote('orphan.md', 'Attendees: ghost@nowhere.com\n\nSomething useful.'))
+    expect(interactionCount()).toBe(0)
+    const imports = db.prepare('SELECT * FROM note_imports').all() as {
+      matched_count: number; unmatched_json: string
+    }[]
+    expect(imports).toHaveLength(1)
+    expect(imports[0].matched_count).toBe(0)
+    expect(JSON.parse(imports[0].unmatched_json)).toContain('ghost@nowhere.com')
+  })
+
+  it('skips unsupported file types', () => {
+    expect(ingestFile(db, writeNote('photo.png', 'not a note'))).toBeNull()
+  })
+
+  it('skips empty files', () => {
+    expect(ingestFile(db, writeNote('empty.md', ''))).toBeNull()
+  })
+
+  it('returns null for a missing file rather than throwing', () => {
+    expect(ingestFile(db, path.join(dir, 'does-not-exist.md'))).toBeNull()
+  })
+
+  it('records the notetaker for provenance', () => {
+    ingestFile(db, writeNote('t.md', 'Tactiq export\nAttendees: sarah@acmerobotics.com\n\nHi.'))
+    const row = db.prepare('SELECT source FROM note_imports').get() as { source: string }
+    expect(row.source).toBe('Tactiq')
+  })
+})
+
+describe('scanNoteFolder', () => {
+  it('returns zeroes when no folder is configured', () => {
+    expect(scanNoteFolder(db)).toEqual({ imported: 0, skipped: 0, matched: 0, unmatched: 0 })
+  })
+
+  it('imports every supported note in the folder', () => {
+    writeNote('a.md', GRANOLA_NOTE)
+    writeNote('b.md', 'Attendees: marta@example.com\nDate: 2026-02-02\n\nCoffee.')
+    writeNote('ignore.png', 'binary-ish')
+    setNotesFolder(db, dir)
+
+    const result = scanNoteFolder(db)
+    expect(result.imported).toBe(2)
+    expect(result.matched).toBe(2)
+    expect(result.skipped).toBe(1)
+  })
+
+  it('is idempotent across repeated scans', () => {
+    writeNote('a.md', GRANOLA_NOTE)
+    setNotesFolder(db, dir)
+    scanNoteFolder(db)
+    const second = scanNoteFolder(db)
+    expect(second.imported).toBe(0)
+    expect(interactionCount()).toBe(1)
+  })
+
+  it('survives a folder that no longer exists', () => {
+    setNotesFolder(db, path.join(dir, 'gone'))
+    expect(() => scanNoteFolder(db)).not.toThrow()
+  })
+
+  it('round-trips the configured folder', () => {
+    setNotesFolder(db, dir)
+    expect(getNotesFolder(db)).toBe(dir)
+  })
+})
+
+describe('getRecentImports', () => {
+  it('lists imports newest first', () => {
+    writeNote('a.md', GRANOLA_NOTE)
+    writeNote('b.md', 'Attendees: marta@example.com\nDate: 2026-02-02\n\nCoffee.')
+    setNotesFolder(db, dir)
+    scanNoteFolder(db)
+    expect(getRecentImports(db)).toHaveLength(2)
+  })
+})

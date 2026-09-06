@@ -239,6 +239,18 @@ const api = {
   },
 
   // Onboarding
+  // Meeting notes dropped in by Granola / Tactiq / Plaud / Fathom / ...
+  notes: {
+    getStatus: () => ipcRenderer.invoke('notes:getStatus'),
+    chooseFolder: () => ipcRenderer.invoke('notes:chooseFolder'),
+    clearFolder: () => ipcRenderer.invoke('notes:clearFolder'),
+    scanNow: () => ipcRenderer.invoke('notes:scanNow'),
+    setOwnName: (name: string) => ipcRenderer.invoke('notes:setOwnName', name),
+    getRecent: (limit?: number) => ipcRenderer.invoke('notes:getRecent', limit),
+    assign: (importId: number, contactId: number) =>
+      ipcRenderer.invoke('notes:assign', importId, contactId)
+  },
+
   onboarding: {
     getProgress: () => ipcRenderer.invoke('db:onboarding:getProgress'),
     completeStep: (stepId: string) => ipcRenderer.invoke('db:onboarding:completeStep', stepId),

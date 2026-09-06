@@ -5,6 +5,14 @@ import { syncAll } from '../lib/sync'
 import { isPushSupported, isSubscribedToPush, subscribeToPush, unsubscribeFromPush } from '../lib/push-notifications'
 import { useToast } from '../components/ui/Toast'
 
+interface NotesStatus {
+  folder: string | null
+  ownName: string
+  total: number
+  filed: number
+  unmatched: number
+}
+
 const LINKEDIN_COLUMNS: Record<string, string> = {
   'First Name': 'first_name',
   'Last Name': 'last_name',
@@ -102,7 +110,53 @@ export default function Settings() {
   // Reset confirm
   const [resetStep, setResetStep] = useState(0)
 
-  useEffect(() => { loadStats(); loadGoogleStatus(); loadMsStatus(); loadAiStatus(); loadGoogleAutoSync(); loadMsAutoSync() }, [])
+  // Meeting notes
+  const [notesStatus, setNotesStatus] = useState<NotesStatus | null>(null)
+  const [notesBusy, setNotesBusy] = useState(false)
+
+  useEffect(() => { loadStats(); loadGoogleStatus(); loadMsStatus(); loadAiStatus(); loadGoogleAutoSync(); loadMsAutoSync(); loadNotesStatus() }, [])
+
+  async function loadNotesStatus() {
+    setNotesStatus(await window.api.notes.getStatus() as NotesStatus)
+  }
+
+  async function handleChooseNotesFolder() {
+    setNotesBusy(true)
+    try {
+      const result = await window.api.notes.chooseFolder() as
+        { canceled: boolean; imported?: number; matched?: number }
+      if (!result.canceled) {
+        await loadNotesStatus()
+        toast(result.imported
+          ? `Filed ${result.imported} note${result.imported === 1 ? '' : 's'} against ${result.matched} contact${result.matched === 1 ? '' : 's'}`
+          : 'Watching that folder — new notes will be filed automatically')
+      }
+    } finally {
+      setNotesBusy(false)
+    }
+  }
+
+  async function handleScanNotes() {
+    setNotesBusy(true)
+    try {
+      const r = await window.api.notes.scanNow() as { imported: number; matched: number }
+      await loadNotesStatus()
+      toast(r.imported ? `Filed ${r.imported} new note${r.imported === 1 ? '' : 's'}` : 'No new notes found')
+    } finally {
+      setNotesBusy(false)
+    }
+  }
+
+  async function handleClearNotesFolder() {
+    await window.api.notes.clearFolder()
+    await loadNotesStatus()
+    toast('Stopped watching that folder')
+  }
+
+  async function handleSaveOwnName(name: string) {
+    await window.api.notes.setOwnName(name)
+    await loadNotesStatus()
+  }
 
   async function loadAiStatus() {
     const status = await window.api.ai.getStatus() as { configured: boolean }
@@ -783,6 +837,91 @@ export default function Settings() {
             )}
             {aiMessage && (
               <p className={`text-xs ${aiMessage.includes('failed') || aiMessage.includes('removed') ? 'text-zinc-500' : 'text-emerald-500'}`}>{aiMessage}</p>
+            )}
+          </div>
+        </section>
+
+        {/* Meeting Notes */}
+        <section className="mb-8">
+          <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Meeting Notes</h2>
+          <div className="space-y-3">
+            <p className="text-sm text-zinc-500">
+              Already using Granola, Tactiq, Plaud, Fathom or Otter? Point Nexus at the folder your
+              notes get saved to. Every new note is filed against the people who were in the meeting —
+              you never have to type it up again.
+            </p>
+
+            {notesStatus?.folder ? (
+              <div className="space-y-3 border border-zinc-200/60 dark:border-zinc-800/40 rounded-lg p-4 bg-zinc-50 dark:bg-zinc-900/30">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
+                  <p className="text-sm text-zinc-700 dark:text-zinc-300 truncate" title={notesStatus.folder}>
+                    Watching {notesStatus.folder}
+                  </p>
+                </div>
+
+                <p className="text-xs text-zinc-500">
+                  {notesStatus.total === 0
+                    ? 'No notes yet — drop one in and it will appear on the people it mentions.'
+                    : `${notesStatus.total} note${notesStatus.total === 1 ? '' : 's'} read, filed against ${notesStatus.filed} contact${notesStatus.filed === 1 ? '' : 's'}.`}
+                  {notesStatus.unmatched > 0 &&
+                    ` ${notesStatus.unmatched} couldn't be matched to anyone yet.`}
+                </p>
+
+                <div>
+                  <label className="block text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-1">
+                    Your name in meeting notes
+                  </label>
+                  <input
+                    type="text"
+                    defaultValue={notesStatus.ownName}
+                    onBlur={e => handleSaveOwnName(e.target.value)}
+                    placeholder="e.g. Daniel Uusitalo"
+                    className="w-full bg-white dark:bg-zinc-800/50 border border-zinc-300 dark:border-zinc-700/50 rounded-lg px-3 py-2 text-sm text-zinc-900 dark:text-zinc-200 outline-none focus:border-violet-500/50 transition-colors"
+                    onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+                  />
+                  <p className="mt-1 text-[10px] text-zinc-400 dark:text-zinc-600">
+                    Exactly as your notetaker writes it, so you aren&apos;t logged as a guest at your own meetings.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={handleScanNotes}
+                    disabled={notesBusy}
+                    className="px-4 py-1.5 text-sm font-medium text-white bg-violet-600 hover:bg-violet-500 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    {notesBusy ? 'Checking...' : 'Check now'}
+                  </button>
+                  <button
+                    onClick={handleChooseNotesFolder}
+                    disabled={notesBusy}
+                    className="px-4 py-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300 border border-zinc-300 dark:border-zinc-700/50 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    Change folder
+                  </button>
+                  <button
+                    onClick={handleClearNotesFolder}
+                    disabled={notesBusy}
+                    className="px-4 py-1.5 text-sm font-medium text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors disabled:opacity-50"
+                  >
+                    Stop watching
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3 border border-zinc-200/60 dark:border-zinc-800/40 rounded-lg p-4 bg-zinc-50 dark:bg-zinc-900/30">
+                <button
+                  onClick={handleChooseNotesFolder}
+                  disabled={notesBusy}
+                  className="px-4 py-1.5 text-sm font-medium text-white bg-violet-600 hover:bg-violet-500 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {notesBusy ? 'Opening...' : 'Choose folder'}
+                </button>
+                <p className="text-[10px] text-zinc-400 dark:text-zinc-600">
+                  Notes are read from your computer and stay there. Nothing is uploaded.
+                </p>
+              </div>
             )}
           </div>
         </section>

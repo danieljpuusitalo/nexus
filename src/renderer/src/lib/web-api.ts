@@ -863,6 +863,18 @@ export function createWebApi() {
     },
 
     // --- Onboarding ---
+    // Meeting-note ingestion watches a local folder, which the browser cannot
+    // do — the desktop app owns this feature.
+    notes: {
+      getStatus: async () => ({ folder: null, ownName: '', total: 0, filed: 0, unmatched: 0 }),
+      chooseFolder: async () => unsupported('Meeting notes folder'),
+      clearFolder: async () => unsupported('Meeting notes folder'),
+      scanNow: async () => ({ imported: 0, skipped: 0, matched: 0, unmatched: 0 }),
+      setOwnName: async () => unsupported('Meeting notes'),
+      getRecent: async () => [],
+      assign: async () => unsupported('Assigning meeting notes')
+    },
+
     onboarding: {
       getProgress: async () => {
         const userId = await getUserId()

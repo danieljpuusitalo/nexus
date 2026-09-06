@@ -6,6 +6,7 @@ import { getDatabase, closeDatabase } from './database'
 import { registerIpcHandlers } from './ipc'
 import { startBriefingLoop, stopBriefingLoop } from './meeting-briefing'
 import { startGoogleContactsAutoSync, stopGoogleContactsAutoSync } from './google-contacts-sync'
+import { startNoteWatcher, stopNoteWatcher } from './note-ingest'
 import { startMicrosoftContactsAutoSync, stopMicrosoftContactsAutoSync } from './microsoft-contacts-sync'
 import { autoUpdater } from 'electron-updater'
 import { safeOpenExternal } from './url-validator'
@@ -214,6 +215,9 @@ app.whenReady().then(() => {
 
   // Start contact auto-sync loops (if enabled by user)
   startGoogleContactsAutoSync(getDatabase())
+
+  // Watch the meeting-notes folder (no-op until the user picks one)
+  startNoteWatcher(getDatabase())
   startMicrosoftContactsAutoSync(getDatabase())
 
   createWindow()
@@ -238,6 +242,7 @@ app.on('window-all-closed', () => {
   stopBriefingLoop()
   stopGoogleContactsAutoSync()
   stopMicrosoftContactsAutoSync()
+  stopNoteWatcher()
   closeDatabase()
   if (process.platform !== 'darwin') {
     app.quit()
