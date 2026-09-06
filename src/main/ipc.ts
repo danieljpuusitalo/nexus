@@ -39,6 +39,12 @@ import {
   startNoteWatcher,
   stopNoteWatcher,
 } from './note-ingest'
+import {
+  getMeetingsForContact,
+  getParticipants,
+  getAmbiguousParticipants,
+  assignParticipant,
+} from './meeting-ledger'
 import fs from 'fs'
 import path from 'path'
 
@@ -2475,6 +2481,29 @@ export function registerIpcHandlers(): void {
 
   safeHandle('notes:getRecent', (_e: unknown, limit?: number) =>
     getRecentImports(db, typeof limit === 'number' ? limit : 20)
+  )
+
+  // --- Meeting ledger (the aggregation layer) ---
+
+  safeHandle('ledger:getForContact', (_e: unknown, contactId: number, limit?: number) =>
+    getMeetingsForContact(db, contactId, typeof limit === 'number' ? limit : 100)
+  )
+
+  safeHandle('ledger:getParticipants', (_e: unknown, meetingId: number) =>
+    getParticipants(db, meetingId)
+  )
+
+  // Participant links a human needs to resolve: several contacts fitted the
+  // name, or none did. Never auto-linked — a silent wrong link is the one
+  // failure a per-person ledger cannot absorb.
+  safeHandle('ledger:getReviewQueue', (_e: unknown, limit?: number) =>
+    getAmbiguousParticipants(db, typeof limit === 'number' ? limit : 50)
+  )
+
+  safeHandle(
+    'ledger:assignParticipant',
+    (_e: unknown, participantId: number, contactId: number) =>
+      assignParticipant(db, participantId, contactId)
   )
 
   // Files the user assigns by hand when automatic matching found nobody.

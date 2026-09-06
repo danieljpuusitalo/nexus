@@ -869,10 +869,21 @@ export function createWebApi() {
       getStatus: async () => ({ folder: null, ownName: '', total: 0, filed: 0, unmatched: 0 }),
       chooseFolder: async () => unsupported('Meeting notes folder'),
       clearFolder: async () => unsupported('Meeting notes folder'),
-      scanNow: async () => ({ imported: 0, skipped: 0, matched: 0, unmatched: 0 }),
+      scanNow: async () => ({ imported: 0, skipped: 0, matched: 0, unmatched: 0, ambiguous: 0 }),
       setOwnName: async () => unsupported('Meeting notes'),
       getRecent: async () => [],
       assign: async () => unsupported('Assigning meeting notes')
+    },
+
+    // The ledger itself is plain relational data, so unlike the folder watcher
+    // it can be served from Postgres when the web build gets a backend. Until
+    // those tables exist in Supabase these return empty rather than throwing,
+    // so the person view renders its empty state instead of an error.
+    ledger: {
+      getForContact: async () => [],
+      getParticipants: async () => [],
+      getReviewQueue: async () => [],
+      assignParticipant: async () => unsupported('Assigning meeting participants')
     },
 
     onboarding: {

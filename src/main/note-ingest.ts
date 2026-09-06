@@ -23,7 +23,12 @@ import path from 'path'
 import crypto from 'crypto'
 import type Database from 'better-sqlite3'
 import { parseMeetingNote, type ParsedNote } from './meeting-note-parser'
-import { resolvePerson, loadContacts, normaliseName } from './person-resolver'
+import {
+  recordMeeting,
+  resolveParticipants,
+  type NormalizedMeeting,
+  type RawParticipant,
+} from './meeting-ledger'
 
 const SUPPORTED_EXTENSIONS = new Set(['.md', '.txt', '.vtt', '.srt', '.json', '.markdown'])
 
@@ -123,42 +128,24 @@ export function matchNoteToContacts(
   db: Database.Database,
   note: ParsedNote
 ): { matched: MatchedContact[]; unmatched: string[]; ambiguous: string[] } {
-  const self = getSelfIdentifiers(db)
+  const resolved = resolveParticipants(db, participantsOf(note), getSelfIdentifiers(db))
+
   const matched = new Map<number, string>()
   const unmatched: string[] = []
   const ambiguous: string[] = []
 
-  // One read of the contact table for the whole note, not one per participant.
-  const contacts = loadContacts(db)
-  const byId = new Map(contacts.map(c => [c.id, c]))
-  const label = (id: number): string => {
-    const c = byId.get(id)
-    return c ? `${c.first_name} ${c.last_name}`.trim() : ''
-  }
-
-  // Accent-fold both sides so "Jörg" in a transcript still recognises the
-  // "Jorg" the user typed into the own-name box (and vice versa).
-  const selfNames = new Set([...self.names].map(normaliseName))
-
-  for (const email of note.attendeeEmails) {
-    if (self.emails.has(email)) continue
-    const hit = resolvePerson(db, { email }, contacts)
-    if (hit.contactId !== null) matched.set(hit.contactId, label(hit.contactId))
-    else unmatched.push(email)
-  }
-
-  for (const name of note.attendeeNames) {
-    if (selfNames.has(normaliseName(name))) continue
-    const hit = resolvePerson(db, { name }, contacts)
-    if (hit.contactId !== null) {
-      matched.set(hit.contactId, label(hit.contactId))
+  for (const p of resolved) {
+    if (p.isSelf) continue
+    if (p.contactId !== null) {
+      matched.set(p.contactId, p.contactName)
       continue
     }
     // A name that resolved via someone's email is already covered; only report
-    // a name as needing attention when nothing in this note matched it.
-    if (unmatched.includes(name) || ambiguous.includes(name)) continue
-    if (hit.ambiguousCount) ambiguous.push(name)
-    else unmatched.push(name)
+    // a participant as needing attention when nothing in this note matched it.
+    const label = p.raw.email || p.raw.name || ''
+    if (!label || unmatched.includes(label) || ambiguous.includes(label)) continue
+    if (p.resolution === 'ambiguous') ambiguous.push(label)
+    else unmatched.push(label)
   }
 
   return {
@@ -166,6 +153,22 @@ export function matchNoteToContacts(
     unmatched,
     ambiguous,
   }
+}
+
+/**
+ * A parsed note's attendees as ledger participants.
+ *
+ * Emails and display names arrive in separate lists because most exports carry
+ * one or the other, rarely both for the same person. They stay separate here:
+ * pairing "Davide Mazzanti" to "davide@acme.com" by position would be a guess,
+ * and the resolver's whole contract is that it does not guess. Two entries that
+ * turn out to be the same contact collapse when the links are deduped.
+ */
+function participantsOf(note: ParsedNote): RawParticipant[] {
+  return [
+    ...note.attendeeEmails.map(email => ({ email })),
+    ...note.attendeeNames.map(name => ({ name })),
+  ]
 }
 
 function buildDescription(note: ParsedNote): string {
@@ -199,14 +202,53 @@ export function ingestFile(db: Database.Database, filePath: string): IngestResul
 
   const fileName = path.basename(filePath)
   const note = parseMeetingNote(content, fileName, mtime)
-  const { matched, unmatched, ambiguous } = matchNoteToContacts(db, note)
   const description = buildDescription(note)
+
+  // The ledger is the source of truth: one row for the meeting, one link per
+  // person. `source_id` is the content hash, so the ledger dedupes on exactly
+  // the same key the file-level check above uses.
+  const normalized: NormalizedMeeting = {
+    source: note.source || 'file',
+    sourceId: hash,
+    sourceUrl: note.sourceUrl,
+    title: note.title,
+    startedAt: note.date,
+    durationMinutes: note.durationMinutes,
+    participants: participantsOf(note),
+    summaryMarkdown: note.summary.slice(0, MAX_SUMMARY_CHARS),
+    actionItems: note.actionItems,
+    transcript: note.transcript,
+    rawFileName: fileName,
+  }
+
+  const ledger = recordMeeting(db, normalized, getSelfIdentifiers(db))
+
+  // Distinct contacts to file against — the same person can appear twice in one
+  // note (once by email, once by display name) and must not get two rows.
+  const matched = new Map<number, string>()
+  const unmatched: string[] = []
+  const ambiguous: string[] = []
+  for (const p of ledger.participants) {
+    if (p.isSelf) continue
+    if (p.contactId !== null) {
+      matched.set(p.contactId, p.contactName)
+      continue
+    }
+    const label = p.raw.email || p.raw.name || ''
+    if (!label || unmatched.includes(label) || ambiguous.includes(label)) continue
+    if (p.resolution === 'ambiguous') ambiguous.push(label)
+    else unmatched.push(label)
+  }
 
   // Both kinds land in the same queue: someone has to look at them either way.
   const needsAttention = [...unmatched, ...ambiguous]
 
+  // Dual-write. The CRM's activity feed, last-contacted dates and relationship
+  // health all read `interactions`, so the ledger does not get to replace it
+  // yet — but every row now carries the meeting it came from, which is what
+  // makes deriving these later a deletion rather than a rewrite.
   const insertInteraction = db.prepare(
-    "INSERT INTO interactions (contact_id, type, description, date) VALUES (?, 'meeting', ?, ?)"
+    "INSERT INTO interactions (contact_id, type, description, date, meeting_id) VALUES (?, 'meeting', ?, ?, ?)"
   )
   const insertImport = db.prepare(
     `INSERT INTO note_imports (file_hash, file_name, title, note_date, source, matched_count, unmatched_json, summary)
@@ -216,8 +258,8 @@ export function ingestFile(db: Database.Database, filePath: string): IngestResul
   // One transaction: either the note is fully filed or not recorded at all,
   // so a crash mid-import can't leave the hash marking it as done.
   db.transaction(() => {
-    for (const contact of matched) {
-      insertInteraction.run(contact.id, description, note.date)
+    for (const [contactId] of matched) {
+      insertInteraction.run(contactId, description, note.date, ledger.meetingId)
     }
     insertImport.run(
       hash,
@@ -225,7 +267,7 @@ export function ingestFile(db: Database.Database, filePath: string): IngestResul
       note.title,
       note.date,
       note.source,
-      matched.length,
+      matched.size,
       JSON.stringify(needsAttention),
       note.summary.slice(0, MAX_SUMMARY_CHARS)
     )
@@ -234,8 +276,8 @@ export function ingestFile(db: Database.Database, filePath: string): IngestResul
   return {
     imported: 1,
     skipped: 0,
-    matched: matched.length,
-    unmatched: matched.length === 0 ? 1 : 0,
+    matched: matched.size,
+    unmatched: matched.size === 0 ? 1 : 0,
     ambiguous: ambiguous.length,
   }
 }

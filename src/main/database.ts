@@ -406,8 +406,67 @@ function migrateSchema(): void {
     );
   `)
 
+  // Calendar events, cached from Google Calendar.
+  //
+  // The calendar is the ground truth for who was actually in a room. A notetaker
+  // hands us display names ("Davide", "D. Mazzanti"); the calendar event for the
+  // same slot hands us five attendee emails. Resolving a name against those five
+  // is a near-trivial problem, where resolving it against 2,000 contacts is an
+  // ambiguous one. `ical_uid` survives across sources, so it is also the key two
+  // different notetakers' captures of one meeting get reconciled on later.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS calendar_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      provider TEXT NOT NULL DEFAULT 'google',
+      provider_event_id TEXT NOT NULL,
+      ical_uid TEXT DEFAULT '',
+      title TEXT DEFAULT '',
+      started_at TEXT NOT NULL,
+      ended_at TEXT DEFAULT '',
+      organizer_email TEXT DEFAULT '',
+      attendees_json TEXT NOT NULL DEFAULT '[]',
+      is_all_day INTEGER NOT NULL DEFAULT 0,
+      synced_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(provider, provider_event_id)
+    );
+  `)
+
+  // Additive column migrations for the ledger. Safe to run against existing
+  // databases: `meetings` and `meeting_participants` have never held a row
+  // (nothing wrote to them before this), so there is nothing to backfill.
+  const addColumn = (table: string, column: string, ddl: string): void => {
+    const cols = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]
+    if (cols.length > 0 && !cols.some(c => c.name === column)) {
+      db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl}`)
+    }
+  }
+
+  // `duration_minutes` alone can't answer "was this meeting running at 14:30",
+  // which is what matching a transcript to a calendar event needs.
+  addColumn('meetings', 'ended_at', "TEXT DEFAULT ''")
+  addColumn('meetings', 'calendar_event_id', 'INTEGER DEFAULT NULL')
+  addColumn('meetings', 'ical_uid', "TEXT DEFAULT ''")
+
+  // How confident we are in a participant link, and which rule produced it.
+  // `resolution` is the tier the review queue filters on; `resolved_via` is the
+  // specific strategy, kept for debugging why a link looks wrong.
+  addColumn('meeting_participants', 'resolution', "TEXT NOT NULL DEFAULT 'unresolved'")
+  addColumn('meeting_participants', 'resolved_via', "TEXT DEFAULT ''")
+
+  // Links a CRM interaction back to the ledger meeting that produced it.
+  // Ingest dual-writes: the ledger is the new source of truth, but the activity
+  // feed, last-contacted dates and relationship health all read `interactions`,
+  // so those keep working untouched. This column is what makes it possible to
+  // later derive interactions from the ledger by deleting code rather than
+  // rewriting it — and what stops the same meeting being counted twice.
+  addColumn('interactions', 'meeting_id', 'INTEGER DEFAULT NULL')
+
   // --- Performance Indexes ---
   db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_calendar_events_started_at ON calendar_events(started_at);
+    CREATE INDEX IF NOT EXISTS idx_calendar_events_ical_uid ON calendar_events(ical_uid);
+    CREATE INDEX IF NOT EXISTS idx_meetings_calendar_event ON meetings(calendar_event_id);
+    CREATE INDEX IF NOT EXISTS idx_interactions_meeting_id ON interactions(meeting_id);
     CREATE INDEX IF NOT EXISTS idx_note_imports_created_at ON note_imports(created_at);
     CREATE INDEX IF NOT EXISTS idx_meetings_started_at ON meetings(started_at);
     CREATE INDEX IF NOT EXISTS idx_meeting_participants_meeting ON meeting_participants(meeting_id);

@@ -64,9 +64,41 @@ function makeDb(): Database.Database {
       cloud_id TEXT DEFAULT NULL,
       synced_at TEXT DEFAULT NULL,
       deleted_at TEXT DEFAULT NULL,
+      meeting_id INTEGER DEFAULT NULL,
       FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE
     );
     CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT);
+    CREATE TABLE meetings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      source TEXT NOT NULL,
+      source_id TEXT NOT NULL,
+      source_url TEXT DEFAULT '',
+      title TEXT DEFAULT '',
+      started_at TEXT NOT NULL,
+      duration_minutes INTEGER DEFAULT NULL,
+      summary TEXT DEFAULT '',
+      action_items_json TEXT NOT NULL DEFAULT '[]',
+      transcript TEXT DEFAULT '',
+      has_summary INTEGER NOT NULL DEFAULT 0,
+      raw_file_name TEXT DEFAULT '',
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      ended_at TEXT DEFAULT '',
+      calendar_event_id INTEGER DEFAULT NULL,
+      ical_uid TEXT DEFAULT '',
+      UNIQUE(source, source_id)
+    );
+    CREATE TABLE meeting_participants (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      meeting_id INTEGER NOT NULL,
+      contact_id INTEGER DEFAULT NULL,
+      raw_name TEXT DEFAULT '',
+      raw_email TEXT DEFAULT '',
+      is_self INTEGER NOT NULL DEFAULT 0,
+      resolution TEXT NOT NULL DEFAULT 'unresolved',
+      resolved_via TEXT DEFAULT '',
+      FOREIGN KEY (meeting_id) REFERENCES meetings(id) ON DELETE CASCADE,
+      FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE SET NULL
+    );
     CREATE TABLE note_imports (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       file_hash TEXT NOT NULL UNIQUE,
@@ -190,6 +222,43 @@ describe('matchNoteToContacts', () => {
       .prepare('SELECT unmatched_json FROM note_imports')
       .get() as { unmatched_json: string }
     expect(JSON.parse(row.unmatched_json)).toContain('David Smith')
+  })
+
+  // The whole point of the pivot: a meeting is a first-class row, not N copies
+  // of a note pasted onto N contact cards. These tables existed but nothing had
+  // ever written to them.
+  it('writes the meeting into the ledger, not just onto contacts', () => {
+    const file = writeNote('acme.md', GRANOLA_NOTE)
+    ingestFile(db, file)
+
+    const m = db.prepare('SELECT * FROM meetings').all() as Record<string, unknown>[]
+    expect(m).toHaveLength(1)
+    expect(m[0].title).toBe('Series A intro — Acme Robotics')
+    // This fixture carries no notetaker fingerprint, so provenance falls back
+    // to the generic file adapter rather than being guessed at.
+    expect(m[0].source).toBe('file')
+    expect(m[0].raw_file_name).toBe('acme.md')
+
+    const links = db.prepare('SELECT * FROM meeting_participants').all() as Record<string, unknown>[]
+    expect(links).toHaveLength(1)
+    expect(links[0].resolution).toBe('email_exact')
+
+    // Dual-write: the CRM activity feed keeps working, and the row it reads
+    // now points back at the ledger meeting that produced it.
+    const ints = db.prepare('SELECT * FROM interactions').all() as Record<string, unknown>[]
+    expect(ints).toHaveLength(1)
+    expect(ints[0].meeting_id).toBe(m[0].id)
+  })
+
+  it('files one interaction per person when a note names them twice', () => {
+    // Sarah appears once by email and once by display name. She is one person.
+    const note = 'Attendees: Sarah Chen <sarah@acmerobotics.com>, Sarah Chen\n\nCaught up.'
+    ingestFile(db, writeNote('dup.md', note))
+
+    expect(interactionCount()).toBe(1)
+    const links = db.prepare('SELECT COUNT(*) AS c FROM meeting_participants').get() as { c: number }
+    // The ledger keeps both raw mentions; only the CRM write is deduped.
+    expect(links.c).toBeGreaterThanOrEqual(1)
   })
 
   // The richer resolver is now actually reachable from ingest; it previously sat
