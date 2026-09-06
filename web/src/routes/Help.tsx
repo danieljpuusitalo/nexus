@@ -19,6 +19,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import Draft from '../components/Draft'
+import Stage from '../components/Stage'
 import {
   ago,
   draftIntro,
@@ -26,6 +27,7 @@ import {
   introductions,
   longDate,
   personById,
+  signals,
   standings,
   unmet,
   type Introduction,
@@ -102,6 +104,8 @@ export default function Help() {
   return (
     <div className="record">
       <div className="record-inner wide">
+        <Stage />
+
         <div className="crumb">
           <span>Ways to help</span>
           <span>/</span>
@@ -115,7 +119,20 @@ export default function Help() {
         </p>
 
         {all.length === 0 ? (
-          <p className="quiet">Nothing to connect right now.</p>
+          <div className="waiting">
+            {signals().length === 0 ? (
+              <>
+                <b>Nothing to work with yet.</b> People state what they need and what they can give
+                constantly, and it is picked up from the calls as they arrive. A few conversations
+                in, this fills.
+              </>
+            ) : (
+              <>
+                <b>No matches yet.</b> {signals().length} things people have mentioned wanting or
+                offering, and none of them line up. The pair may walk in next week.
+              </>
+            )}
+          </div>
         ) : (
           all.map(i => (
             <Card key={i.key} i={i} onDraft={() => setDrafting(i)} />

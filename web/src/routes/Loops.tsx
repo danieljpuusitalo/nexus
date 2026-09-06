@@ -13,6 +13,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import Draft from '../components/Draft'
+import Stage from '../components/Stage'
 import { allLoops, ago, draftLoop, initials, shortDate, type OpenLoop } from '../lib/data'
 
 function Loop({ l, onDone, onDraft }: { l: OpenLoop; onDone: () => void; onDraft: () => void }) {
@@ -58,6 +59,8 @@ export default function Loops() {
   return (
     <div className="record">
       <div className="record-inner">
+        <Stage />
+
         <div className="crumb">
           <span>Open loops</span>
           <span>/</span>
