@@ -25,6 +25,13 @@ export const StreamIcon = () => (
   </svg>
 )
 
+export const LoopIcon = () => (
+  <svg {...base}>
+    <path d="M20 6.5H9.5a4 4 0 0 0 0 8h5a4 4 0 0 1 0 8H4" />
+    <path d="m16.5 3.4 3.4 3.1-3.4 3.1" />
+  </svg>
+)
+
 export const AskIcon = () => (
   <svg {...base}>
     <circle cx="12" cy="12" r="8.5" />
