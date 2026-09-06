@@ -389,6 +389,26 @@ function migrateSchema(): void {
     );
   `)
 
+  // Generated summaries for meetings whose source gave nothing usable — e.g.
+  // Tactiq's "Highlights" are garbled ASR fragments, not a summary, so the
+  // ingest path discards them and the meeting lands here with a transcript
+  // and no `summary`. Deliberately a separate table from `meetings.summary`:
+  // that column is the verbatim record of what the notetaker actually said,
+  // and this is a model's reconstruction from the transcript. Keeping them
+  // apart means a caller always knows which kind of text it's looking at, and
+  // a bad generation can never silently become "what the tool said happened".
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS enhanced_summaries (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      meeting_id INTEGER NOT NULL UNIQUE,
+      model TEXT NOT NULL,
+      summary TEXT NOT NULL DEFAULT '',
+      action_items_json TEXT NOT NULL DEFAULT '[]',
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (meeting_id) REFERENCES meetings(id) ON DELETE CASCADE
+    );
+  `)
+
   // Legacy import log from the first folder-watcher cut. Superseded by
   // `meetings`; kept so existing rows are not lost on upgrade.
   db.exec(`
@@ -471,6 +491,7 @@ function migrateSchema(): void {
     CREATE INDEX IF NOT EXISTS idx_meetings_started_at ON meetings(started_at);
     CREATE INDEX IF NOT EXISTS idx_meeting_participants_meeting ON meeting_participants(meeting_id);
     CREATE INDEX IF NOT EXISTS idx_meeting_participants_contact ON meeting_participants(contact_id);
+    CREATE INDEX IF NOT EXISTS idx_enhanced_summaries_meeting_id ON enhanced_summaries(meeting_id);
     CREATE INDEX IF NOT EXISTS idx_contacts_deleted_at ON contacts(deleted_at);
     CREATE INDEX IF NOT EXISTS idx_interactions_contact_id ON interactions(contact_id);
     CREATE INDEX IF NOT EXISTS idx_interactions_date ON interactions(date);

@@ -411,6 +411,9 @@ export function getMeetingsForContact(
       `SELECT m.id, m.source, m.source_url, m.title, m.started_at, m.ended_at,
               m.duration_minutes, m.summary, m.action_items_json, m.has_summary,
               m.transcript != '' AS has_transcript,
+              e.summary AS enhanced_summary,
+              e.action_items_json AS enhanced_action_items_json,
+              e.model AS enhanced_model,
               (SELECT GROUP_CONCAT(
                         COALESCE(
                           NULLIF(TRIM(COALESCE(c2.first_name, '') || ' ' || COALESCE(c2.last_name, '')), ''),
@@ -422,11 +425,85 @@ export function getMeetingsForContact(
                WHERE p2.meeting_id = m.id AND p2.is_self = 0 AND p2.id <> p.id) AS others
        FROM meetings m
        JOIN meeting_participants p ON p.meeting_id = m.id
+       LEFT JOIN enhanced_summaries e ON e.meeting_id = m.id
        WHERE p.contact_id = ? AND p.is_self = 0
        ORDER BY m.started_at DESC, m.id DESC
        LIMIT ?`
     )
     .all(contactId, limit)
+}
+
+/**
+ * Everyone you have had a conversation with, most recent first.
+ *
+ * This replaces the CRM's contact list. It is not "people you entered" — it is
+ * people the record knows you spoke to, which is a different and much more
+ * useful set. Someone with no conversations does not appear, because from this
+ * product's point of view there is nothing to say about them.
+ */
+export function getPeople(db: Database.Database, limit = 500): unknown[] {
+  return db
+    .prepare(
+      `SELECT c.id, c.first_name, c.last_name, c.email, c.company,
+              COUNT(DISTINCT p.meeting_id) AS conversations,
+              MAX(m.started_at) AS last_conversation_at,
+              (SELECT m2.title FROM meeting_participants p2
+                 JOIN meetings m2 ON m2.id = p2.meeting_id
+                WHERE p2.contact_id = c.id AND p2.is_self = 0
+                ORDER BY m2.started_at DESC, m2.id DESC LIMIT 1) AS last_title
+       FROM contacts c
+       JOIN meeting_participants p ON p.contact_id = c.id AND p.is_self = 0
+       JOIN meetings m ON m.id = p.meeting_id
+       WHERE c.deleted_at IS NULL
+       GROUP BY c.id
+       ORDER BY last_conversation_at DESC, c.id DESC
+       LIMIT ?`
+    )
+    .all(limit)
+}
+
+/** The most recent conversations across everyone. The home feed. */
+export function getRecentMeetings(db: Database.Database, limit = 25): unknown[] {
+  return db
+    .prepare(
+      `SELECT m.id, m.source, m.title, m.started_at, m.duration_minutes,
+              m.summary, m.has_summary, m.transcript != '' AS has_transcript,
+              e.summary AS enhanced_summary,
+              e.action_items_json AS enhanced_action_items_json,
+              e.model AS enhanced_model,
+              (SELECT GROUP_CONCAT(
+                        COALESCE(
+                          NULLIF(TRIM(COALESCE(c.first_name, '') || ' ' || COALESCE(c.last_name, '')), ''),
+                          NULLIF(p.raw_name, ''),
+                          p.raw_email
+                        ), ', ')
+                 FROM meeting_participants p
+                 LEFT JOIN contacts c ON c.id = p.contact_id AND c.deleted_at IS NULL
+                WHERE p.meeting_id = m.id AND p.is_self = 0) AS people
+       FROM meetings m
+       LEFT JOIN enhanced_summaries e ON e.meeting_id = m.id
+       ORDER BY m.started_at DESC, m.id DESC
+       LIMIT ?`
+    )
+    .all(limit)
+}
+
+/** One person's header details, for the top of their page. */
+export function getPerson(db: Database.Database, contactId: number): unknown {
+  return db
+    .prepare(
+      `SELECT c.id, c.first_name, c.last_name, c.email, c.company, c.job_title,
+              c.linkedin_url,
+              COUNT(DISTINCT p.meeting_id) AS conversations,
+              MIN(m.started_at) AS first_conversation_at,
+              MAX(m.started_at) AS last_conversation_at
+       FROM contacts c
+       LEFT JOIN meeting_participants p ON p.contact_id = c.id AND p.is_self = 0
+       LEFT JOIN meetings m ON m.id = p.meeting_id
+       WHERE c.id = ? AND c.deleted_at IS NULL
+       GROUP BY c.id`
+    )
+    .get(contactId)
 }
 
 /** The other people in a meeting, for rendering "with X, Y and Z". */

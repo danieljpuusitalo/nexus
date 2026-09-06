@@ -1,35 +1,41 @@
 /**
- * The person view: every conversation with one person, whichever tool recorded
- * it, in one consistent format.
+ * One conversation, rendered.
  *
- * This is the product. Notetakers each keep a flat chronological list trapped in
- * their own silo; to find what you discussed with someone you scroll and search
- * inside Tactiq. This inverts that.
+ * Shared by the person page and the home feed so a conversation looks the same
+ * everywhere — the record is the product, and a record that reformats itself
+ * depending on where you found it is not one record.
  *
- * Rule: what the tool gave us is shown verbatim. Nothing here paraphrases,
- * summarises or generates. A summary that reads well but says something the
- * meeting did not is worse than no summary.
+ * Rule: whatever the source gave us is shown verbatim. Generated text is always
+ * labelled and always keeps the original one click away. We never paraphrase
+ * silently, and we never fall back to the raw transcript where a summary
+ * belongs — a wall of speech-recognition noise reads as something the product
+ * wrote, and it is worse than an honest blank.
  */
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 
 export interface LedgerMeeting {
   id: number
   source: string
-  source_url: string
+  source_url?: string
   title: string
   started_at: string
-  ended_at: string
+  ended_at?: string
   duration_minutes: number | null
   summary: string
-  action_items_json: string
+  action_items_json?: string
   has_summary: number
   has_transcript: number
   /** Comma-separated display names of the other attendees. */
-  others: string | null
+  others?: string | null
+  people?: string | null
+  /** Generated from the transcript when the source gave nothing usable. */
+  enhanced_summary?: string | null
+  enhanced_action_items_json?: string | null
+  enhanced_model?: string | null
 }
 
-/** Notetaker provenance. Colours are per-source so a tool is recognisable. */
+/** Notetaker provenance. Per-source colour so a tool is recognisable at a glance. */
 const SOURCE_STYLE: Record<string, string> = {
   Fathom: 'bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-300',
   Fireflies: 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300',
@@ -39,23 +45,23 @@ const SOURCE_STYLE: Record<string, string> = {
   file: 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400',
 }
 
-function sourceStyle(source: string): string {
+export function sourceStyle(source: string): string {
   return SOURCE_STYLE[source] || SOURCE_STYLE.file
 }
 
-function sourceLabel(source: string): string {
+export function sourceLabel(source: string): string {
   return source === 'file' ? 'Imported file' : source
 }
 
-function formatDate(iso: string): string {
-  const d = new Date(iso.length <= 10 ? `${iso}T00:00:00` : iso)
-  if (Number.isNaN(d.getTime())) return iso
+export function formatDate(iso: string): string {
+  const d = new Date(iso && iso.length <= 10 ? `${iso}T00:00:00` : iso)
+  if (Number.isNaN(d.getTime())) return iso || ''
   return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-/** "3 weeks ago" — the thing you actually want to know on a person's page. */
-function relativeDate(iso: string): string {
-  const d = new Date(iso.length <= 10 ? `${iso}T00:00:00` : iso)
+/** "3 weeks ago" — usually the thing you actually want to know. */
+export function relativeDate(iso: string): string {
+  const d = new Date(iso && iso.length <= 10 ? `${iso}T00:00:00` : iso)
   if (Number.isNaN(d.getTime())) return ''
   const days = Math.floor((Date.now() - d.getTime()) / 86_400_000)
   if (days < 0) return 'upcoming'
@@ -67,7 +73,8 @@ function relativeDate(iso: string): string {
   return `${Math.round(days / 365)} years ago`
 }
 
-function parseActionItems(json: string): string[] {
+function parseActionItems(json?: string): string[] {
+  if (!json) return []
   try {
     const parsed = JSON.parse(json)
     return Array.isArray(parsed) ? parsed.filter(x => typeof x === 'string' && x.trim()) : []
@@ -76,26 +83,45 @@ function parseActionItems(json: string): string[] {
   }
 }
 
-/** Long summaries collapse; the first few lines are almost always the point. */
+/** Long records collapse; the first few lines are almost always the point. */
 const COLLAPSE_AFTER_CHARS = 420
 
-function MeetingCard({ meeting }: { meeting: LedgerMeeting }): React.JSX.Element {
+export default function Conversation({
+  meeting,
+  showPeople = true,
+}: {
+  meeting: LedgerMeeting
+  showPeople?: boolean
+}): React.JSX.Element {
   const [expanded, setExpanded] = useState(false)
-  const actionItems = parseActionItems(meeting.action_items_json)
-  const summary = meeting.summary || ''
+
+  // The verbatim record always wins. Generated text only fills a gap the source
+  // left, and is never allowed to stand in front of something the tool actually
+  // wrote — that is the difference between a record and a paraphrase.
+  const verbatim = meeting.summary || ''
+  const generated = meeting.enhanced_summary || ''
+  const isGenerated = !verbatim && !!generated
+  const summary = verbatim || generated
+
+  const actionItems = parseActionItems(
+    verbatim ? meeting.action_items_json : meeting.enhanced_action_items_json || meeting.action_items_json
+  )
   const isLong = summary.length > COLLAPSE_AFTER_CHARS
   const shown = expanded || !isLong ? summary : `${summary.slice(0, COLLAPSE_AFTER_CHARS)}…`
+  const people = meeting.others ?? meeting.people ?? null
 
   return (
     <div className="rounded-xl border border-zinc-200 dark:border-zinc-800/60 bg-white dark:bg-zinc-900/40 p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h4 className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">
-            {meeting.title || 'Untitled meeting'}
+            {meeting.title || 'Untitled conversation'}
           </h4>
           <p className="text-xs text-zinc-500 mt-0.5">
             {formatDate(meeting.started_at)}
-            <span className="text-zinc-400 dark:text-zinc-600"> · {relativeDate(meeting.started_at)}</span>
+            <span className="text-zinc-400 dark:text-zinc-600">
+              {' '}· {relativeDate(meeting.started_at)}
+            </span>
             {meeting.duration_minutes ? ` · ${meeting.duration_minutes} min` : ''}
           </p>
         </div>
@@ -107,15 +133,31 @@ function MeetingCard({ meeting }: { meeting: LedgerMeeting }): React.JSX.Element
         </span>
       </div>
 
-      {meeting.others && (
+      {showPeople && people && (
         <p className="text-xs text-zinc-500 mt-2">
           <span className="text-zinc-400 dark:text-zinc-600">with </span>
-          {meeting.others}
+          {people}
         </p>
       )}
 
       {summary ? (
         <div className="mt-3">
+          {/* Labelled every time. A generated summary that looks like the
+              source's own words is the one thing that would make the record
+              untrustworthy, and trust is the entire value of a record. */}
+          {isGenerated && (
+            <p
+              className="text-[10px] font-medium text-zinc-500 mb-1.5 flex items-center gap-1.5"
+              title={meeting.enhanced_model ? `Written by ${meeting.enhanced_model}` : undefined}
+            >
+              <span className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">
+                Generated
+              </span>
+              <span className="text-zinc-400 dark:text-zinc-600">
+                {sourceLabel(meeting.source)} gave no summary — written from the transcript
+              </span>
+            </p>
+          )}
           <p className="text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap leading-relaxed">
             {shown}
           </p>
@@ -129,9 +171,6 @@ function MeetingCard({ meeting }: { meeting: LedgerMeeting }): React.JSX.Element
           )}
         </div>
       ) : (
-        // Deliberately not falling back to the transcript: raw transcripts are
-        // frequently speech-recognition noise, and showing one here would look
-        // like a summary the tool never wrote.
         <p className="mt-3 text-sm text-zinc-400 dark:text-zinc-600 italic">
           {meeting.has_transcript
             ? 'No summary in this capture — transcript only.'
@@ -165,69 +204,6 @@ function MeetingCard({ meeting }: { meeting: LedgerMeeting }): React.JSX.Element
           Open in {sourceLabel(meeting.source)} ↗
         </a>
       )}
-    </div>
-  )
-}
-
-export default function MeetingTimeline({
-  contactId,
-  contactName,
-}: {
-  contactId: number
-  contactName: string
-}): React.JSX.Element | null {
-  const [meetings, setMeetings] = useState<LedgerMeeting[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    let cancelled = false
-    setLoading(true)
-    window.api.ledger
-      .getForContact(contactId)
-      .then((rows: unknown) => {
-        if (!cancelled) setMeetings(rows as LedgerMeeting[])
-      })
-      .catch(() => {
-        if (!cancelled) setMeetings([])
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [contactId])
-
-  if (loading) {
-    return (
-      <div className="space-y-2">
-        {[0, 1].map(i => (
-          <div
-            key={i}
-            className="h-24 rounded-xl bg-zinc-100 dark:bg-zinc-800/50 animate-pulse"
-          />
-        ))}
-      </div>
-    )
-  }
-
-  // An empty ledger is the normal state until a notetaker is connected, so this
-  // stays quiet rather than shouting about a missing feature.
-  if (meetings.length === 0) return null
-
-  return (
-    <div>
-      <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-3">
-        Conversations ({meetings.length})
-        <span className="ml-2 font-normal text-xs text-zinc-500">
-          every meeting with {contactName}, whichever tool recorded it
-        </span>
-      </h3>
-      <div className="space-y-2">
-        {meetings.map(m => (
-          <MeetingCard key={m.id} meeting={m} />
-        ))}
-      </div>
     </div>
   )
 }

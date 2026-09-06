@@ -244,7 +244,13 @@ const api = {
     sync: (opts?: { daysBack?: number; daysForward?: number }) =>
       ipcRenderer.invoke('calendar:sync', opts),
   },
+  summariser: {
+    runBacklog: (max?: number) => ipcRenderer.invoke('summariser:runBacklog', max),
+  },
   ledger: {
+    getPeople: (limit?: number) => ipcRenderer.invoke('ledger:getPeople', limit),
+    getRecent: (limit?: number) => ipcRenderer.invoke('ledger:getRecent', limit),
+    getPerson: (contactId: number) => ipcRenderer.invoke('ledger:getPerson', contactId),
     getForContact: (contactId: number, limit?: number) =>
       ipcRenderer.invoke('ledger:getForContact', contactId, limit),
     getParticipants: (meetingId: number) =>

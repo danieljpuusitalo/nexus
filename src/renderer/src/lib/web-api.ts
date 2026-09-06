@@ -883,7 +883,14 @@ export function createWebApi() {
       sync: async () => ({ fetched: 0, stored: 0, error: 'Calendar sync runs in the desktop app' })
     },
 
+    summariser: {
+      runBacklog: async () => ({ enhanced: 0, failed: 0, skipped: 0 })
+    },
+
     ledger: {
+      getPeople: async () => [],
+      getRecent: async () => [],
+      getPerson: async () => null,
       getForContact: async () => [],
       getParticipants: async () => [],
       getReviewQueue: async () => [],

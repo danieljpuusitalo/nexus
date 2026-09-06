@@ -70,6 +70,15 @@ function makeDb(): Database.Database {
       synced_at TEXT NOT NULL DEFAULT (datetime('now')),
       UNIQUE(provider, provider_event_id)
     );
+    CREATE TABLE enhanced_summaries (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      meeting_id INTEGER NOT NULL UNIQUE,
+      model TEXT NOT NULL,
+      summary TEXT NOT NULL DEFAULT '',
+      action_items_json TEXT NOT NULL DEFAULT '[]',
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (meeting_id) REFERENCES meetings(id) ON DELETE CASCADE
+    );
     CREATE TABLE meeting_participants (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       meeting_id INTEGER NOT NULL,

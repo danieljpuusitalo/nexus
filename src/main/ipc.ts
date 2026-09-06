@@ -40,11 +40,15 @@ import {
   stopNoteWatcher,
 } from './note-ingest'
 import { syncCalendar } from './calendar-sync'
+import { enhanceBacklog } from './summariser'
 import {
   getMeetingsForContact,
   getParticipants,
   getAmbiguousParticipants,
   assignParticipant,
+  getPeople,
+  getRecentMeetings,
+  getPerson,
 } from './meeting-ledger'
 import fs from 'fs'
 import path from 'path'
@@ -2483,8 +2487,16 @@ export function registerIpcHandlers(): void {
   // calendar failure is not a scan failure — the sync fails soft by contract.
   safeHandle('notes:scanNow', async () => {
     await syncCalendar(db)
-    return scanNoteFolder(db)
+    const result = scanNoteFolder(db)
+    // Fill in summaries for whatever just arrived without one. Fails soft and
+    // no-ops entirely without an API key, so a scan never depends on it.
+    const enhanced = await enhanceBacklog(db, { max: 10 })
+    return { ...result, enhanced: enhanced.enhanced }
   })
+
+  safeHandle('summariser:runBacklog', (_e: unknown, max?: number) =>
+    enhanceBacklog(db, { max: typeof max === 'number' ? max : 25 })
+  )
 
   safeHandle('calendar:sync', (_e: unknown, opts?: { daysBack?: number; daysForward?: number }) =>
     syncCalendar(db, opts)
@@ -2495,6 +2507,16 @@ export function registerIpcHandlers(): void {
   )
 
   // --- Meeting ledger (the aggregation layer) ---
+
+  safeHandle('ledger:getPeople', (_e: unknown, limit?: number) =>
+    getPeople(db, typeof limit === 'number' ? limit : 500)
+  )
+
+  safeHandle('ledger:getRecent', (_e: unknown, limit?: number) =>
+    getRecentMeetings(db, typeof limit === 'number' ? limit : 25)
+  )
+
+  safeHandle('ledger:getPerson', (_e: unknown, contactId: number) => getPerson(db, contactId))
 
   safeHandle('ledger:getForContact', (_e: unknown, contactId: number, limit?: number) =>
     getMeetingsForContact(db, contactId, typeof limit === 'number' ? limit : 100)
