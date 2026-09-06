@@ -40,6 +40,13 @@ export const LoopIcon = () => (
   </svg>
 )
 
+export const GiveIcon = () => (
+  <svg {...base}>
+    <path d="M12 20.5s-7.2-4.3-7.2-9.4A3.9 3.9 0 0 1 12 8.6a3.9 3.9 0 0 1 7.2 2.5c0 5.1-7.2 9.4-7.2 9.4Z" />
+    <path d="M12 8.6V3.5M9.6 5.2 12 3.5l2.4 1.7" />
+  </svg>
+)
+
 export const AskIcon = () => (
   <svg {...base}>
     <circle cx="12" cy="12" r="8.5" />

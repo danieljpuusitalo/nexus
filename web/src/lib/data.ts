@@ -390,3 +390,141 @@ export function brief(personId: number): {
   const b = balance(loopsFor(personId))
   return { person: personById(personId), last: convs[0], iOwe: b.iOwe, theyOwe: b.theyOwe }
 }
+
+/* --------------------------------------------------------------- signals -- */
+
+/**
+ * Something a person said they need, or said they could give.
+ *
+ * These sentences are spoken in almost every professional call and thrown away
+ * by every notetaker on the market. They are also the only raw material from
+ * which a network can actually create value, as opposed to merely record it.
+ *
+ * The quote is kept because a suggestion the user cannot audit is a suggestion
+ * they should not act on. Every match traces back to a sentence someone said.
+ */
+export interface Signal {
+  id: number
+  person_id: number
+  kind: 'needs' | 'offers'
+  text: string
+  quote: string
+  conversation_id: number
+  at: string
+  tags: string[]
+}
+
+export function signals(): Signal[] {
+  return (data as unknown as { signals?: Signal[] }).signals ?? []
+}
+
+export function signalsFor(personId: number): { needs: Signal[]; offers: Signal[] } {
+  const mine = signals().filter(s => s.person_id === personId)
+  return { needs: mine.filter(s => s.kind === 'needs'), offers: mine.filter(s => s.kind === 'offers') }
+}
+
+export interface Introduction {
+  key: string
+  need: Signal
+  offer: Signal
+  seeker: Person
+  helper: Person
+  shared: string[]
+  /** An open commitment already covering this. You said you would do it. */
+  promised?: OpenLoop
+}
+
+/**
+ * Where one person's need meets another's offer.
+ *
+ * Tag overlap, deliberately. Not a similarity score, not a ranking model. The
+ * user has to be able to see exactly why two people were put in front of them,
+ * and "both said climate hardware" is a reason a human can check in a second.
+ *
+ * The output is a suggestion to make an introduction, never an action taken on
+ * anyone's behalf. Nothing here contacts a person.
+ */
+export function introductions(): Introduction[] {
+  const all = signals()
+  const loops = allLoops().filter(l => !l.done && l.owner === 'me')
+  const out: Introduction[] = []
+
+  for (const need of all.filter(s => s.kind === 'needs')) {
+    for (const offer of all.filter(s => s.kind === 'offers')) {
+      if (need.person_id === offer.person_id) continue
+      const shared = need.tags.filter(t => offer.tags.includes(t))
+      if (shared.length === 0) continue
+
+      const seeker = personById(need.person_id)
+      const helper = personById(offer.person_id)
+      if (!seeker || !helper) continue
+
+      // If you already promised this intro, say so rather than suggesting it
+      // as though it were a new idea. BOTH names must appear: matching on
+      // either one told the user they had promised things they never said,
+      // which is a worse failure than missing a promise entirely.
+      const promised = loops.find(l => {
+        const t = l.text.toLowerCase()
+        if (!t.includes('introduc')) return false
+        const a = seeker.name.split(' ')[0].toLowerCase()
+        const b = helper.name.split(' ')[0].toLowerCase()
+        return t.includes(a) && t.includes(b)
+      })
+
+      out.push({
+        key: `${need.id}-${offer.id}`,
+        need,
+        offer,
+        seeker,
+        helper,
+        shared,
+        promised,
+      })
+    }
+  }
+
+  // Strongest overlap first, and anything already promised to the top: an
+  // unkept promise outranks a fresh idea.
+  return out.sort((a, b) => {
+    if (!!a.promised !== !!b.promised) return a.promised ? -1 : 1
+    return b.shared.length - a.shared.length
+  })
+}
+
+/** Needs nobody in the library can serve yet. Honest, and worth showing. */
+export function unmet(): Signal[] {
+  const matched = new Set(introductions().map(i => i.need.id))
+  return signals().filter(s => s.kind === 'needs' && !matched.has(s.id))
+}
+
+/**
+ * A first draft of the introduction, for the user to edit and send themselves.
+ *
+ * Deliberately a draft in a box, not a send button. The product's job is to
+ * remove the blank page, not to put words in someone's mouth or mail on their
+ * behalf.
+ */
+export function draftIntro(i: Introduction): string {
+  const a = i.seeker.name.split(' ')[0]
+  const b = i.helper.name.split(' ')[0]
+  const lower = (t: string) => t.charAt(0).toLowerCase() + t.slice(1)
+  const at = (p: Person) => [p.role, p.company].filter(Boolean).join(' at ')
+
+  return `${a}, meet ${i.helper.name}. ${b}, meet ${i.seeker.name}.
+
+${a} is ${at(i.seeker)}, and is looking for ${lower(i.need.text)}.
+
+${b} is ${at(i.helper)}, and can offer ${lower(i.offer.text)}.
+
+It seemed worth connecting you. I will leave you both to it.`
+}
+
+/** A first draft for closing out something you owe. */
+export function draftLoop(l: OpenLoop): string {
+  const first = l.personName.split(' ')[0]
+  return `${first},
+
+Following up on ${l.conversationTitle.toLowerCase()}. I said I would ${l.text.charAt(0).toLowerCase()}${l.text.slice(1)}, so here it is.
+
+`
+}

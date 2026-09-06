@@ -6,12 +6,14 @@ import Person from './routes/Person'
 import Review from './routes/Review'
 import Loops from './routes/Loops'
 import Today from './routes/Today'
-import { AskIcon, LoopIcon, PeopleIcon, TodayIcon } from './components/Icons'
-import { allLoops, initials, load } from './lib/data'
+import Help from './routes/Help'
+import { AskIcon, GiveIcon, LoopIcon, PeopleIcon, TodayIcon } from './components/Icons'
+import { allLoops, initials, introductions, load } from './lib/data'
 
 function Rail() {
   const { queries, self } = load()
   const owed = allLoops().filter(l => !l.done && l.owner === 'me').length
+  const intros = introductions().length
   const cls = ({ isActive }: { isActive: boolean }) => `tab ${isActive ? 'on' : ''}`
 
   return (
@@ -30,6 +32,11 @@ function Rail() {
         <LoopIcon />
         {owed > 0 && <span className="badge">{owed}</span>}
         <span className="tip">Open loops</span>
+      </NavLink>
+      <NavLink to="/help" className={cls}>
+        <GiveIcon />
+        {intros > 0 && <span className="badge sage">{intros}</span>}
+        <span className="tip">Ways to help</span>
       </NavLink>
       <NavLink to="/review" className={cls}>
         <AskIcon />
@@ -58,7 +65,8 @@ function Shell() {
   const solo =
     location.pathname === '/' ||
     location.pathname.startsWith('/review') ||
-    location.pathname.startsWith('/loops')
+    location.pathname.startsWith('/loops') ||
+    location.pathname.startsWith('/help')
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -90,6 +98,7 @@ function Shell() {
         <Route path="/people" element={<Person />} />
         <Route path="/people/:id" element={<Person />} />
         <Route path="/loops" element={<Loops />} />
+        <Route path="/help" element={<Help />} />
         <Route path="/review" element={<Review />} />
       </Routes>
       {palette && <Palette onClose={() => setPalette(false)} />}

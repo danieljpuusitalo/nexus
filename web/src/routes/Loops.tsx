@@ -12,9 +12,10 @@
 
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { allLoops, ago, initials, shortDate, type OpenLoop } from '../lib/data'
+import Draft from '../components/Draft'
+import { allLoops, ago, draftLoop, initials, shortDate, type OpenLoop } from '../lib/data'
 
-function Loop({ l, onDone }: { l: OpenLoop; onDone: () => void }) {
+function Loop({ l, onDone, onDraft }: { l: OpenLoop; onDone: () => void; onDraft: () => void }) {
   return (
     <div className={`loop ${l.late ? 'late' : ''}`}>
       <button className="tick" onClick={onDone} title="Mark as done" />
@@ -35,6 +36,11 @@ function Loop({ l, onDone }: { l: OpenLoop; onDone: () => void }) {
           )}
         </div>
       </div>
+      {l.owner === 'me' && (
+        <button className="act tiny" onClick={onDraft}>
+          Draft
+        </button>
+      )}
       {l.due && <span className={`due ${l.late ? 'on' : ''}`}>by {shortDate(l.due)}</span>}
     </div>
   )
@@ -42,6 +48,7 @@ function Loop({ l, onDone }: { l: OpenLoop; onDone: () => void }) {
 
 export default function Loops() {
   const [closed, setClosed] = useState<Record<string, boolean>>({})
+  const [drafting, setDrafting] = useState<OpenLoop | null>(null)
   const loops = allLoops().filter(l => !l.done && !closed[`${l.conversationId}:${l.text}`])
   const mine = loops.filter(l => l.owner === 'me')
   const theirs = loops.filter(l => l.owner === 'them')
@@ -69,7 +76,7 @@ export default function Loops() {
         {mine.length === 0 ? (
           <p className="quiet">Nothing outstanding on your side.</p>
         ) : (
-          mine.map(l => <Loop key={`${l.conversationId}:${l.text}`} l={l} onDone={() => close(l)} />)
+          mine.map(l => <Loop key={`${l.conversationId}:${l.text}`} l={l} onDone={() => close(l)} onDraft={() => setDrafting(l)} />)
         )}
 
         <div className="loop-head" style={{ marginTop: 30 }}>
@@ -79,9 +86,19 @@ export default function Loops() {
         {theirs.length === 0 ? (
           <p className="quiet">Nothing outstanding on their side.</p>
         ) : (
-          theirs.map(l => <Loop key={`${l.conversationId}:${l.text}`} l={l} onDone={() => close(l)} />)
+          theirs.map(l => <Loop key={`${l.conversationId}:${l.text}`} l={l} onDone={() => close(l)} onDraft={() => setDrafting(l)} />)
         )}
       </div>
+
+      {drafting && (
+        <Draft
+          title="Follow through"
+          context={`${drafting.personName} · ${drafting.conversationTitle}`}
+          initial={draftLoop(drafting)}
+          onClose={() => setDrafting(null)}
+          onDone={() => close(drafting)}
+        />
+      )}
     </div>
   )
 }

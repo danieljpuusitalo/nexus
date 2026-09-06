@@ -376,5 +376,155 @@
       ],
       "where": "Coffee, Amsterdam"
     }
+  ],
+  "signals": [
+    {
+      "id": 1,
+      "person_id": 1,
+      "kind": "needs",
+      "text": "A lead investor for the €2.4M bridge",
+      "quote": "He asked directly whether 4impact would lead.",
+      "conversation_id": 1,
+      "at": "2026-09-02",
+      "tags": [
+        "investment",
+        "climate-hardware",
+        "lead"
+      ]
+    },
+    {
+      "id": 2,
+      "person_id": 1,
+      "kind": "needs",
+      "text": "A route into German grocery buyers",
+      "quote": "German expansion is gated on one certification that lands in Q1.",
+      "conversation_id": 1,
+      "at": "2026-09-02",
+      "tags": [
+        "retail",
+        "germany"
+      ]
+    },
+    {
+      "id": 3,
+      "person_id": 1,
+      "kind": "offers",
+      "text": "Introductions to ex-Picnic operators",
+      "quote": "Two founders, both ex-Picnic. Davide ran operations there.",
+      "conversation_id": 9,
+      "at": "2026-02-11",
+      "tags": [
+        "operations",
+        "hiring",
+        "logistics"
+      ]
+    },
+    {
+      "id": 4,
+      "person_id": 3,
+      "kind": "offers",
+      "text": "Co-investment in climate hardware, following not leading",
+      "quote": "She is personally still interested and is looking for co-invest rather than lead positions in the space.",
+      "conversation_id": 10,
+      "at": "2026-06-03",
+      "tags": [
+        "investment",
+        "climate-hardware"
+      ]
+    },
+    {
+      "id": 5,
+      "person_id": 3,
+      "kind": "offers",
+      "text": "Nordic bank relationships from the Klarna years",
+      "quote": "Northzone has slowed materially on climate hardware.",
+      "conversation_id": 10,
+      "at": "2026-06-03",
+      "tags": [
+        "banking",
+        "nordics"
+      ]
+    },
+    {
+      "id": 6,
+      "person_id": 3,
+      "kind": "needs",
+      "text": "Hardware deal flow where somebody else takes the lead",
+      "quote": "looking for co-invest rather than lead positions",
+      "conversation_id": 10,
+      "at": "2026-06-03",
+      "tags": [
+        "dealflow",
+        "climate-hardware"
+      ]
+    },
+    {
+      "id": 7,
+      "person_id": 2,
+      "kind": "needs",
+      "text": "A paying pilot with a Nordic bank",
+      "quote": "Converting one to paid is the milestone before they raise.",
+      "conversation_id": 5,
+      "at": "2026-08-14",
+      "tags": [
+        "banking",
+        "nordics",
+        "customer"
+      ]
+    },
+    {
+      "id": 8,
+      "person_id": 2,
+      "kind": "offers",
+      "text": "Compliance expertise for Nordic fintech",
+      "quote": "a compliance-monitoring layer for Nordic financial institutions",
+      "conversation_id": 2,
+      "at": "2026-08-31",
+      "tags": [
+        "compliance",
+        "fintech"
+      ]
+    },
+    {
+      "id": 9,
+      "person_id": 4,
+      "kind": "needs",
+      "text": "A third-party validation partner for pack-level testing",
+      "quote": "validated on their own test rigs but not yet by a third party",
+      "conversation_id": 4,
+      "at": "2026-08-19",
+      "tags": [
+        "testing",
+        "validation",
+        "hardware"
+      ]
+    },
+    {
+      "id": 10,
+      "person_id": 5,
+      "kind": "offers",
+      "text": "The certification lab Ember used for pack testing",
+      "quote": "",
+      "conversation_id": 6,
+      "at": "2026-07-30",
+      "tags": [
+        "testing",
+        "validation",
+        "certification"
+      ]
+    },
+    {
+      "id": 11,
+      "person_id": 5,
+      "kind": "needs",
+      "text": "A technical co-founder",
+      "quote": "",
+      "conversation_id": 6,
+      "at": "2026-07-30",
+      "tags": [
+        "hiring",
+        "technical-cofounder"
+      ]
+    }
   ]
 }

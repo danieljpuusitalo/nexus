@@ -913,3 +913,140 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
   .prep-loops { grid-template-columns: 1fr; gap: 12px; }
   .balance { grid-template-columns: 1fr; }
 }
+
+/* -- ways to help -------------------------------------------------------- */
+
+.intro {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--pane);
+  padding: 18px 20px;
+  margin-bottom: 12px;
+  animation: in 0.45s var(--ease) backwards;
+}
+.intro.owed { border-color: rgba(255, 122, 69, 0.3); }
+
+.intro-promise {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ember);
+  margin-bottom: 13px;
+  padding-bottom: 11px;
+  border-bottom: 1px solid var(--line);
+}
+
+.intro-pair { display: grid; grid-template-columns: 1fr 128px 1fr; align-items: start; gap: 4px; }
+
+.side-who { display: flex; align-items: center; gap: 9px; margin-bottom: 11px; }
+.side-who .av { width: 26px; height: 26px; font-size: 9px; margin: 0; }
+.side-who b { display: block; font-size: 13.5px; font-weight: 500; }
+.side-who span span { display: block; font-size: 11.5px; color: var(--faint); }
+.side-who:hover b { color: var(--ember); }
+
+.side-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: 5px;
+}
+.side-label.give { color: var(--sage); }
+
+.side-text { font-size: 14px; line-height: 1.45; }
+
+.side blockquote {
+  margin: 9px 0 0;
+  padding-left: 11px;
+  border-left: 1px solid var(--line-lit);
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--faint);
+  font-style: italic;
+}
+
+.side-when { font-family: var(--mono); font-size: 9px; color: var(--faint); margin-top: 8px; }
+
+/* The joint: what the two have in common, drawn as a seam between them. */
+.joint { display: flex; flex-direction: column; align-items: center; gap: 8px; padding-top: 30px; }
+.joint span { width: 1px; flex: 1; min-height: 16px; background: var(--line-lit); }
+.joint em {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.06em;
+  color: var(--dim);
+  font-style: normal;
+  text-align: center;
+  background: var(--lifted);
+  border: 1px solid var(--line-lit);
+  border-radius: 20px;
+  padding: 3px 8px;
+  white-space: nowrap;
+  max-width: 122px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.unmet { display: flex; gap: 12px; align-items: flex-start; padding: 10px 4px; }
+.unmet-who {
+  width: 26px; height: 26px; flex: none;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--raised);
+  border: 1px dashed var(--line-lit);
+  font-family: var(--mono);
+  font-size: 8px;
+  color: var(--faint);
+}
+
+/* -- draft drawer -------------------------------------------------------- */
+
+.drawer {
+  width: 640px; max-width: 94vw;
+  background: var(--pane);
+  border: 1px solid var(--line-lit);
+  border-radius: 13px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.6);
+  height: fit-content;
+  animation: pop 0.18s var(--ease);
+  overflow: hidden;
+}
+.drawer-head {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 14px;
+  padding: 15px 18px;
+  border-bottom: 1px solid var(--line);
+}
+.drawer-head h3 { margin: 0; font-family: var(--serif); font-weight: 400; font-size: 20px; }
+.drawer-head p { margin: 2px 0 0; font-family: var(--mono); font-size: 10px; color: var(--faint); }
+
+.drawer textarea {
+  width: 100%;
+  background: var(--ink);
+  border: none;
+  padding: 16px 18px;
+  color: var(--bone);
+  font-family: var(--sans);
+  font-size: 13.5px;
+  line-height: 1.65;
+  outline: none;
+  resize: vertical;
+  display: block;
+}
+
+.drawer-foot {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--line);
+}
+.drawer-foot > span { font-family: var(--mono); font-size: 9.5px; color: var(--faint); }
+
+@media (max-width: 760px) {
+  .intro-pair { grid-template-columns: 1fr; }
+  .joint { flex-direction: row; padding: 12px 0; }
+  .joint span { width: auto; height: 1px; flex: 1; min-height: 0; }
+}
+.tab .badge.sage { background: var(--sage); }
+.act.tiny { padding: 4px 9px; font-size: 9.5px; opacity: 0; transition: opacity 0.14s var(--ease); }
+.loop:hover .act.tiny { opacity: 1; }
