@@ -111,3 +111,49 @@ manually enrich anybody. Not a tool for working out who to extract from.
 
 Those are all easy to add and each one would pull the product back towards
 being a CRM, which is the thing that already exists and already does not work.
+
+## The longer bet
+
+As agents absorb the transactional layer of work, what does not get absorbed is
+trust, judgement, reciprocity and reputation. Those are properties of
+relationships between people, and they are the residue left when everything
+automatable has been automated.
+
+Which suggests where this ends up. An agent acting on your behalf, scheduling,
+drafting, negotiating, introducing, needs to know your social state or it will
+be confidently, expensively clumsy. It needs to know that you owe this person
+two things, that you have not delivered on the last one, that they are looking
+for a lead investor, that you have taken more from this relationship than you
+have given. Without that context an agent will optimise a calendar and quietly
+damage a friendship.
+
+**A structured, provenance-backed ledger of interpersonal commitments is
+exactly the context layer that problem needs, and nobody is building it.** Not
+a contact list, not a CRM export: what was promised, by whom, whether it
+happened, and what each side is looking for. That is a small, clean interface
+an assistant could consume, and it is the reason to build the shapes carefully
+now even while the product is still a prototype.
+
+So the data model is designed as though something else will read it. Every
+commitment has an owner and a state. Every signal keeps the quote it came from.
+Every link records how confident we are and why. Not because a prototype needs
+that rigour, but because an agent acting on unverifiable inference is dangerous
+in a way a human skimming a page is not.
+
+### One line we should not cross
+
+There is a version of this framed as training data for human interaction, and
+it is worth naming why that version is wrong rather than leaving it to be
+discovered later.
+
+These transcripts are other people's speech, recorded in private professional
+conversations. The counterparty consented to a meeting, not to a corpus. Using
+their words to train a general model would be a real breach of that, and it
+would also be self-defeating: the entire product rests on the user trusting it
+with the most sensitive record they own. That trust does not survive discovering
+their conversations became someone's training set.
+
+**Your own assistant reading your own ledger on your behalf is a different
+thing entirely, and it is the version worth building.** The distinction is not
+legal hair-splitting. It is the difference between a tool that makes you a
+better counterparty and one that quietly makes its users into a product.
