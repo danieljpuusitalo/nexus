@@ -9,7 +9,7 @@
  * accumulates.
  */
 
-import { Link, useParams } from 'react-router-dom'
+import { Link, Navigate, useParams } from 'react-router-dom'
 import Conversation from '../components/Conversation'
 import Grid from '../components/Grid'
 import {
@@ -28,7 +28,17 @@ import {
 export default function Person() {
   const { id } = useParams<{ id: string }>()
   const person = personById(Number(id))
-  const { sample } = load()
+  const { sample, people } = load()
+
+  // Landing on People with nobody chosen should not show an empty pane. Open
+  // the most recent conversation, which is what someone came looking for far
+  // more often than not.
+  if (!id && people.length > 0) {
+    const recent = [...people].sort((a, b) =>
+      b.last_conversation_at.localeCompare(a.last_conversation_at)
+    )[0]
+    return <Navigate to={`/people/${recent.id}`} replace />
+  }
 
   if (!person) {
     return (

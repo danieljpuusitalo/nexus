@@ -347,5 +347,34 @@
         }
       ]
     }
+  ],
+  "upcoming": [
+    {
+      "id": 101,
+      "title": "Reo Pack: October cohort review",
+      "in_minutes": 26,
+      "person_ids": [
+        1
+      ],
+      "where": "Google Meet"
+    },
+    {
+      "id": 102,
+      "title": "Fenja AI: metrics and the raise",
+      "in_minutes": 195,
+      "person_ids": [
+        2
+      ],
+      "where": "Zoom"
+    },
+    {
+      "id": 103,
+      "title": "Northzone catch-up",
+      "in_minutes": 1500,
+      "person_ids": [
+        3
+      ],
+      "where": "Coffee, Amsterdam"
+    }
   ]
 }

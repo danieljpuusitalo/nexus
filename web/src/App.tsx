@@ -5,7 +5,8 @@ import Palette from './components/Palette'
 import Person from './routes/Person'
 import Review from './routes/Review'
 import Loops from './routes/Loops'
-import { AskIcon, LoopIcon, PeopleIcon } from './components/Icons'
+import Today from './routes/Today'
+import { AskIcon, LoopIcon, PeopleIcon, TodayIcon } from './components/Icons'
 import { allLoops, initials, load } from './lib/data'
 
 function Rail() {
@@ -18,6 +19,10 @@ function Rail() {
       <div className="glyph">N</div>
 
       <NavLink to="/" end className={cls}>
+        <TodayIcon />
+        <span className="tip">Today</span>
+      </NavLink>
+      <NavLink to="/people" className={cls}>
         <PeopleIcon />
         <span className="tip">People</span>
       </NavLink>
@@ -50,7 +55,10 @@ function Shell() {
   const location = useLocation()
   // The index is a list of people. Loops and review are queues of questions,
   // so a people list beside them would only be noise.
-  const solo = location.pathname.startsWith('/review') || location.pathname.startsWith('/loops')
+  const solo =
+    location.pathname === '/' ||
+    location.pathname.startsWith('/review') ||
+    location.pathname.startsWith('/loops')
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -78,7 +86,8 @@ function Shell() {
       <Rail />
       {!solo && <Index mode={mode} setMode={setMode} />}
       <Routes>
-        <Route path="/" element={<Person />} />
+        <Route path="/" element={<Today />} />
+        <Route path="/people" element={<Person />} />
         <Route path="/people/:id" element={<Person />} />
         <Route path="/loops" element={<Loops />} />
         <Route path="/review" element={<Review />} />

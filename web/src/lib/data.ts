@@ -322,3 +322,71 @@ export function balance(loops: OpenLoop[]): {
     theyPromised: theirs.length,
   }
 }
+
+/* -------------------------------------------------------------- upcoming -- */
+
+export interface Upcoming {
+  id: number
+  title: string
+  /** Sample data stores an offset so the demo is always a live day. */
+  in_minutes: number
+  person_ids: number[]
+  where?: string
+}
+
+export interface Meeting extends Upcoming {
+  at: Date
+  people: Person[]
+}
+
+export function upcoming(): Meeting[] {
+  const raw = (data as unknown as { upcoming?: Upcoming[] }).upcoming ?? []
+  return raw
+    .map(u => ({
+      ...u,
+      at: new Date(Date.now() + u.in_minutes * 60_000),
+      people: u.person_ids.map(id => personById(id)).filter((p): p is Person => !!p),
+    }))
+    .sort((a, b) => a.at.getTime() - b.at.getTime())
+}
+
+export function clockTime(d: Date): string {
+  return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+}
+
+/** "in 26 min" while it is close, then the clock. Precision only when useful. */
+export function until(d: Date): string {
+  const mins = Math.round((d.getTime() - Date.now()) / 60_000)
+  if (mins < 0) return 'now'
+  if (mins < 90) return `in ${mins} min`
+  const hours = Math.round(mins / 60)
+  if (hours < 12) return `in ${hours} hours`
+  return clockTime(d)
+}
+
+/** Which day a meeting falls on, in the words someone would actually use. */
+export function dayLabel(d: Date): string {
+  const today = new Date()
+  const t0 = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()
+  const d0 = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+  const days = Math.round((d0 - t0) / 86_400_000)
+  if (days === 0) return 'Today'
+  if (days === 1) return 'Tomorrow'
+  return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })
+}
+
+/**
+ * What you need in front of you before walking into a room with someone.
+ *
+ * The whole product, delivered at the only moment it reliably matters.
+ */
+export function brief(personId: number): {
+  person: Person | undefined
+  last: Conversation | undefined
+  iOwe: OpenLoop[]
+  theyOwe: OpenLoop[]
+} {
+  const convs = conversationsFor(personId)
+  const b = balance(loopsFor(personId))
+  return { person: personById(personId), last: convs[0], iOwe: b.iOwe, theyOwe: b.theyOwe }
+}

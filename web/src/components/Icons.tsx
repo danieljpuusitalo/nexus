@@ -25,6 +25,14 @@ export const StreamIcon = () => (
   </svg>
 )
 
+export const TodayIcon = () => (
+  <svg {...base}>
+    <rect x="3.5" y="5" width="17" height="15.5" rx="2.5" />
+    <path d="M3.5 9.5h17M8 3.5v3M16 3.5v3" />
+    <path d="M7.5 13.5h4" />
+  </svg>
+)
+
 export const LoopIcon = () => (
   <svg {...base}>
     <path d="M20 6.5H9.5a4 4 0 0 0 0 8h5a4 4 0 0 1 0 8H4" />
