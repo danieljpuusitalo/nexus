@@ -342,8 +342,76 @@ function migrateSchema(): void {
     );
   `)
 
+  // --- Meeting ledger ---
+  //
+  // The aggregation layer: one row per real-world meeting, whichever notetaker
+  // produced it (Fathom, Fireflies, Granola, Tactiq via folder, ...). This is
+  // deliberately NOT the `interactions` table — interactions are per-person and
+  // CRM-shaped, so a five-person meeting would store five copies of the same
+  // note. A ledger stores the meeting once and links people to it.
+  //
+  // Dedupe key is (source, source_id): source_id is the provider's own meeting
+  // id, or a content hash for file-based imports. That makes re-syncing and
+  // re-scanning idempotent, and lets the same meeting captured by two different
+  // tools be reconciled later.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS meetings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      source TEXT NOT NULL,
+      source_id TEXT NOT NULL,
+      source_url TEXT DEFAULT '',
+      title TEXT DEFAULT '',
+      started_at TEXT NOT NULL,
+      duration_minutes INTEGER DEFAULT NULL,
+      summary TEXT DEFAULT '',
+      action_items_json TEXT NOT NULL DEFAULT '[]',
+      transcript TEXT DEFAULT '',
+      has_summary INTEGER NOT NULL DEFAULT 0,
+      raw_file_name TEXT DEFAULT '',
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(source, source_id)
+    );
+  `)
+
+  // Who was in each meeting. contact_id stays NULL when the person could not be
+  // resolved yet, so an unknown attendee is a visible, fixable gap rather than
+  // silently dropped data.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS meeting_participants (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      meeting_id INTEGER NOT NULL,
+      contact_id INTEGER DEFAULT NULL,
+      raw_name TEXT DEFAULT '',
+      raw_email TEXT DEFAULT '',
+      is_self INTEGER NOT NULL DEFAULT 0,
+      FOREIGN KEY (meeting_id) REFERENCES meetings(id) ON DELETE CASCADE,
+      FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE SET NULL
+    );
+  `)
+
+  // Legacy import log from the first folder-watcher cut. Superseded by
+  // `meetings`; kept so existing rows are not lost on upgrade.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS note_imports (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      file_hash TEXT NOT NULL UNIQUE,
+      file_name TEXT NOT NULL,
+      title TEXT DEFAULT '',
+      note_date TEXT DEFAULT '',
+      source TEXT DEFAULT '',
+      matched_count INTEGER NOT NULL DEFAULT 0,
+      unmatched_json TEXT NOT NULL DEFAULT '[]',
+      summary TEXT DEFAULT '',
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+  `)
+
   // --- Performance Indexes ---
   db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_note_imports_created_at ON note_imports(created_at);
+    CREATE INDEX IF NOT EXISTS idx_meetings_started_at ON meetings(started_at);
+    CREATE INDEX IF NOT EXISTS idx_meeting_participants_meeting ON meeting_participants(meeting_id);
+    CREATE INDEX IF NOT EXISTS idx_meeting_participants_contact ON meeting_participants(contact_id);
     CREATE INDEX IF NOT EXISTS idx_contacts_deleted_at ON contacts(deleted_at);
     CREATE INDEX IF NOT EXISTS idx_interactions_contact_id ON interactions(contact_id);
     CREATE INDEX IF NOT EXISTS idx_interactions_date ON interactions(date);

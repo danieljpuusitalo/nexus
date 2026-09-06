@@ -30,6 +30,15 @@ import {
   disableAutoSync as disableMsAutoSync,
 } from './microsoft-contacts-sync'
 import { normaliseContact } from './contact-normaliser'
+import {
+  getNotesFolder,
+  setNotesFolder,
+  getSelfIdentifiers,
+  scanNoteFolder,
+  getRecentImports,
+  startNoteWatcher,
+  stopNoteWatcher,
+} from './note-ingest'
 import fs from 'fs'
 import path from 'path'
 
@@ -2414,5 +2423,81 @@ export function registerIpcHandlers(): void {
     `).all()
 
     return { contacts, relationships }
+  })
+
+  // --- Meeting Notes (Granola / Tactiq / Plaud / Fathom / ...) ---
+
+  safeHandle('notes:getStatus', () => {
+    const folder = getNotesFolder(db)
+    const self = getSelfIdentifiers(db)
+    const ownName = [...self.names][0] || ''
+    const stats = db
+      .prepare(
+        `SELECT COUNT(*) AS total,
+                COALESCE(SUM(matched_count), 0) AS filed,
+                COALESCE(SUM(CASE WHEN matched_count = 0 THEN 1 ELSE 0 END), 0) AS unmatched
+         FROM note_imports`
+      )
+      .get() as { total: number; filed: number; unmatched: number }
+    return { folder, ownName, ...stats }
+  })
+
+  safeHandle('notes:chooseFolder', async () => {
+    const result = await dialog.showOpenDialog({
+      title: 'Choose the folder your meeting notes land in',
+      properties: ['openDirectory', 'createDirectory'],
+    })
+    if (result.canceled || !result.filePaths[0]) return { canceled: true }
+
+    const folder = result.filePaths[0]
+    setNotesFolder(db, folder)
+    // Pick up anything already sitting in the folder, then watch it.
+    const scan = scanNoteFolder(db)
+    startNoteWatcher(db)
+    return { canceled: false, folder, ...scan }
+  })
+
+  safeHandle('notes:clearFolder', () => {
+    stopNoteWatcher()
+    db.prepare("DELETE FROM settings WHERE key = 'notes_folder'").run()
+    return { ok: true }
+  })
+
+  // Who "you" are, so you aren't filed as an attendee of your own meetings.
+  safeHandle('notes:setOwnName', (_e: unknown, name: string) => {
+    db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(
+      'notes_own_name', (name || '').trim()
+    )
+    return { ok: true }
+  })
+
+  safeHandle('notes:scanNow', () => scanNoteFolder(db))
+
+  safeHandle('notes:getRecent', (_e: unknown, limit?: number) =>
+    getRecentImports(db, typeof limit === 'number' ? limit : 20)
+  )
+
+  // Files the user assigns by hand when automatic matching found nobody.
+  safeHandle('notes:assign', (_e: unknown, importId: number, contactId: number) => {
+    const row = db
+      .prepare('SELECT title, note_date, source, summary FROM note_imports WHERE id = ?')
+      .get(importId) as
+      | { title: string; note_date: string; source: string; summary: string }
+      | undefined
+    if (!row) return { error: 'Note not found' }
+
+    const header = row.source ? `${row.title} (via ${row.source})` : row.title
+    const description = row.summary ? `${header}\n\n${row.summary}` : header
+
+    db.transaction(() => {
+      db.prepare(
+        "INSERT INTO interactions (contact_id, type, description, date) VALUES (?, 'meeting', ?, ?)"
+      ).run(contactId, description, row.note_date)
+      db.prepare(
+        'UPDATE note_imports SET matched_count = matched_count + 1 WHERE id = ?'
+      ).run(importId)
+    })()
+
+    return { ok: true }
   })
 }
