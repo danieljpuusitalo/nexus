@@ -7,6 +7,7 @@ import Pipeline from './pages/Pipeline'
 import Groups from './pages/Groups'
 import Tags from './pages/Tags'
 import Interactions from './pages/Interactions'
+import ReviewQueue from './pages/ReviewQueue'
 import Reminders from './pages/Reminders'
 import Settings from './pages/Settings'
 import QuickAction from './pages/QuickAction'
@@ -113,6 +114,7 @@ function AuthGate() {
             <Route path="/groups" element={<Groups />} />
             <Route path="/tags" element={<Tags />} />
             <Route path="/interactions" element={<Interactions />} />
+            <Route path="/review" element={<ReviewQueue />} />
             <Route path="/reminders" element={<Reminders />} />
             <Route path="/quick-action" element={<QuickAction />} />
             <Route path="/keep-in-touch" element={<KeepInTouch />} />
