@@ -1,12 +1,10 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import SlideOver from '../ui/SlideOver'
 import TagInput from '../ui/TagInput'
 import CommandPalette from '../ui/CommandPalette'
 import type { Tag, Group } from '../../types'
-
-const ACCEPTED_EXTENSIONS = ['.csv', '.vcf', '.vcard', '.json', '.zip', '.txt']
 
 const TAG_COLORS = [
   '#8B5CF6', '#3B82F6', '#10B981', '#F59E0B', '#EF4444',
@@ -28,10 +26,6 @@ export default function AppLayout() {
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [showCommandPalette, setShowCommandPalette] = useState(false)
 
-  // Drag-drop state
-  const [isDragging, setIsDragging] = useState(false)
-  const dragCounter = useRef(0)
-
   // Quick Add state
   const [quickAddOpen, setQuickAddOpen] = useState(false)
   const [form, setForm] = useState(emptyForm)
@@ -51,26 +45,6 @@ export default function AppLayout() {
       }
     }
     check()
-  }, [])
-
-  // First-run detection — redirect to Welcome screen
-  useEffect(() => {
-    async function checkFirstRun() {
-      try {
-        const done = await window.api.settings.get('first_launch_complete') as string | null
-        if (done) return
-        const count = await window.api.contacts.count() as number
-        if (count > 0) {
-          // Has data already — mark as complete
-          await window.api.settings.set('first_launch_complete', 'true')
-          return
-        }
-        navigate('/welcome')
-      } catch {
-        // ignore
-      }
-    }
-    checkFirstRun()
   }, [])
 
   // Keyboard shortcuts
@@ -109,8 +83,7 @@ export default function AppLayout() {
     // Number shortcuts for navigation (only when not in an input)
     if (!isInput && !e.ctrlKey && !e.metaKey && !e.altKey && !showCommandPalette) {
       const navMap: Record<string, string> = {
-        '1': '/', '2': '/pipeline', '3': '/contacts', '4': '/groups',
-        '5': '/tags', '6': '/interactions', '7': '/reminders', '8': '/settings'
+        '1': '/', '2': '/contacts', '3': '/interactions', '4': '/reminders', '5': '/settings'
       }
       if (navMap[e.key]) {
         e.preventDefault()
@@ -136,48 +109,6 @@ export default function AppLayout() {
     setAllGroups(groups as Group[])
     setQuickAddOpen(true)
   }
-
-  // Global drag-drop handlers
-  const handleDragEnter = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    dragCounter.current++
-    if (e.dataTransfer?.types.includes('Files')) {
-      setIsDragging(true)
-    }
-  }, [])
-
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    dragCounter.current--
-    if (dragCounter.current === 0) {
-      setIsDragging(false)
-    }
-  }, [])
-
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-  }, [])
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setIsDragging(false)
-    dragCounter.current = 0
-
-    const files = Array.from(e.dataTransfer?.files || [])
-    const validFile = files.find(f => {
-      const ext = '.' + f.name.split('.').pop()?.toLowerCase()
-      return ACCEPTED_EXTENSIONS.includes(ext)
-    })
-
-    if (validFile) {
-      // Navigate to import page with the file path
-      navigate('/import', { state: { droppedFilePath: (validFile as File & { path: string }).path, droppedFileName: validFile.name } })
-    }
-  }, [navigate])
 
   async function handleQuickSave() {
     if (!form.first_name.trim()) return
@@ -205,13 +136,7 @@ export default function AppLayout() {
   }
 
   return (
-    <div
-      className="flex h-screen bg-white dark:bg-zinc-950 relative"
-      onDragEnter={handleDragEnter}
-      onDragLeave={handleDragLeave}
-      onDragOver={handleDragOver}
-      onDrop={handleDrop}
-    >
+    <div className="flex h-screen bg-white dark:bg-zinc-950 relative">
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Notification banner */}
@@ -346,24 +271,6 @@ export default function AppLayout() {
         onClose={() => setShowCommandPalette(false)}
       />
 
-      {/* Global Drag-Drop Overlay */}
-      {isDragging && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center pointer-events-none">
-          <div className="absolute inset-0 bg-violet-600/10 dark:bg-violet-500/10 border-4 border-dashed border-violet-500 dark:border-violet-400 rounded-lg m-2" />
-          <div className="relative flex flex-col items-center gap-3">
-            <div className="w-16 h-16 rounded-2xl bg-violet-100 dark:bg-violet-900/50 flex items-center justify-center">
-              <svg className="w-8 h-8 text-violet-600 dark:text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-              </svg>
-            </div>
-            <div className="text-center">
-              <p className="text-lg font-semibold text-violet-700 dark:text-violet-300">Drop your file to import contacts</p>
-              <p className="text-sm text-violet-500 dark:text-violet-400 mt-1">Supports CSV, VCF, JSON, ZIP, and text files</p>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Keyboard Shortcuts Overlay */}
       {showShortcuts && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -382,13 +289,10 @@ export default function AppLayout() {
                 <p className="text-[10px] text-zinc-400 dark:text-zinc-600 uppercase tracking-wider mb-2">Navigation</p>
                 <div className="grid grid-cols-2 gap-2">
                   <ShortcutRow keys="1" desc="Dashboard" />
-                  <ShortcutRow keys="2" desc="Pipeline" />
-                  <ShortcutRow keys="3" desc="Contacts" />
-                  <ShortcutRow keys="4" desc="Groups" />
-                  <ShortcutRow keys="5" desc="Tags" />
-                  <ShortcutRow keys="6" desc="Interactions" />
-                  <ShortcutRow keys="7" desc="Reminders" />
-                  <ShortcutRow keys="8" desc="Settings" />
+                  <ShortcutRow keys="2" desc="Contacts" />
+                  <ShortcutRow keys="3" desc="Interactions" />
+                  <ShortcutRow keys="4" desc="Reminders" />
+                  <ShortcutRow keys="5" desc="Settings" />
                 </div>
               </div>
             </div>

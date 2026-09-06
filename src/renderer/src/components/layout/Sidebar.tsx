@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useTheme } from '../../App'
-import type { GroupWithCount, SavedView, Favorite } from '../../types'
+import type { SavedView, Favorite } from '../../types'
 
 export default function Sidebar() {
   const { theme, toggleTheme } = useTheme()
@@ -10,24 +10,18 @@ export default function Sidebar() {
   const [keepInTouchBadge, setKeepInTouchBadge] = useState(0)
   const [reviewBadge, setReviewBadge] = useState(0)
   const [appVersion, setAppVersion] = useState('')
-  const [groups, setGroups] = useState<GroupWithCount[]>([])
-  const [groupsOpen, setGroupsOpen] = useState(true)
   const [views, setViews] = useState<SavedView[]>([])
   const [viewsOpen, setViewsOpen] = useState(true)
   const [favorites, setFavorites] = useState<Favorite[]>([])
-  const [onboardingDone, setOnboardingDone] = useState(0)
-  const [onboardingTotal] = useState(15)
 
   useEffect(() => {
     loadBadges()
-    loadGroups()
     loadViews()
     loadFavorites()
-    loadOnboarding()
     window.api.app.getVersion().then((v: unknown) => setAppVersion(v as string))
     // Slow fallback poll (5 min) — primary refresh via focus/visibility events
     const interval = setInterval(loadBadges, 300000)
-    const handleFocus = () => { loadBadges(); loadGroups() }
+    const handleFocus = () => { loadBadges() }
     window.addEventListener('focus', handleFocus)
     return () => { clearInterval(interval); window.removeEventListener('focus', handleFocus) }
   }, [])
@@ -45,15 +39,6 @@ export default function Sidebar() {
       setReviewBadge(toReview)
     } catch {
       // ignore on startup race
-    }
-  }
-
-  async function loadGroups() {
-    try {
-      const data = await window.api.groups.getAllWithCounts()
-      setGroups(data as GroupWithCount[])
-    } catch {
-      // ignore
     }
   }
 
@@ -75,21 +60,11 @@ export default function Sidebar() {
     }
   }
 
-  async function loadOnboarding() {
-    try {
-      const progress = await window.api.onboarding.getProgress() as Record<string, string>
-      setOnboardingDone(Object.keys(progress).length)
-    } catch {
-      // ignore
-    }
-  }
-
   function getFavoriteRoute(fav: Favorite): string {
     switch (fav.item_type) {
       case 'contact': return `/contacts?contactId=${fav.item_id}`
-      case 'group': return `/groups?groupId=${fav.item_id}`
       case 'view': return `/contacts?viewId=${fav.item_id}`
-      default: return '/'
+      default: return '/contacts'
     }
   }
 
@@ -97,7 +72,6 @@ export default function Sidebar() {
     if (fav.emoji) return fav.emoji
     switch (fav.item_type) {
       case 'contact': return '👤'
-      case 'group': return '👥'
       case 'view': return '📋'
       default: return '⭐'
     }
@@ -148,24 +122,9 @@ export default function Sidebar() {
               </span>
             )}
           </NavLink>
-          <NavLink to="/workspace" className={linkClass}>
-            <WorkspaceIcon className="w-4 h-4 flex-shrink-0" />
-            <span className="flex-1">Workspace</span>
-          </NavLink>
           <NavLink to="/contacts" className={linkClass}>
             <ContactsIcon className="w-4 h-4 flex-shrink-0" />
             <span className="flex-1">Contacts</span>
-          </NavLink>
-          <NavLink to="/merge" className={({ isActive }) =>
-            `flex items-center gap-2 px-3 py-1.5 ml-6 rounded-lg text-xs transition-colors ${
-              isActive ? 'text-violet-600 dark:text-violet-400 font-medium' : 'text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400'
-            }`
-          }>
-            <span className="flex-1">Clean Up</span>
-          </NavLink>
-          <NavLink to="/keep-in-touch" className={linkClass}>
-            <RemindersIcon className="w-4 h-4 flex-shrink-0" />
-            <span className="flex-1">Keep In Touch</span>
           </NavLink>
           <NavLink to="/interactions" className={linkClass}>
             <InteractionsIcon className="w-4 h-4 flex-shrink-0" />
@@ -183,18 +142,6 @@ export default function Sidebar() {
               </span>
             )}
           </NavLink>
-          <NavLink to="/pipeline" className={linkClass}>
-            <PipelineIcon className="w-4 h-4 flex-shrink-0" />
-            <span className="flex-1">Pipeline</span>
-          </NavLink>
-          <NavLink to="/radar" className={linkClass}>
-            <RadarIcon className="w-4 h-4 flex-shrink-0" />
-            <span className="flex-1">Radar</span>
-          </NavLink>
-          <NavLink to="/map" className={linkClass}>
-            <MapIcon className="w-4 h-4 flex-shrink-0" />
-            <span className="flex-1">Map</span>
-          </NavLink>
           <NavLink to="/reminders" className={linkClass}>
             <BellIcon className="w-4 h-4 flex-shrink-0" />
             <span className="flex-1">Reminders</span>
@@ -203,49 +150,6 @@ export default function Sidebar() {
                 {reminderBadge > 99 ? '99+' : reminderBadge}
               </span>
             )}
-          </NavLink>
-          <NavLink to="/copilot" className={linkClass}>
-            <CopilotIcon className="w-4 h-4 flex-shrink-0" />
-            <span className="flex-1">Copilot</span>
-          </NavLink>
-          {onboardingDone < onboardingTotal && (
-            <NavLink to="/onboarding" className={linkClass}>
-              <OnboardingIcon className="w-4 h-4 flex-shrink-0" />
-              <span className="flex-1">Get Started</span>
-              <span className="min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-violet-500 text-[10px] font-bold text-white px-1">
-                {onboardingDone}/{onboardingTotal}
-              </span>
-            </NavLink>
-          )}
-        </div>
-
-        {/* Groups Section */}
-        <div className="mt-6">
-          <button onClick={() => setGroupsOpen(!groupsOpen)}
-            className="flex items-center gap-1 px-3 py-1.5 w-full text-left">
-            <svg className={`w-3 h-3 text-zinc-400 transition-transform ${groupsOpen ? 'rotate-90' : ''}`} viewBox="0 0 16 16" fill="currentColor">
-              <path d="M6 3l5 5-5 5z" />
-            </svg>
-            <span className="text-[10px] font-semibold text-zinc-400 dark:text-zinc-600 uppercase tracking-wider">Groups</span>
-            <span className="text-[10px] text-zinc-400 dark:text-zinc-600 ml-auto">{groups.length}</span>
-          </button>
-          {groupsOpen && groups.length > 0 && (
-            <div className="space-y-0.5 mt-1">
-              {groups.map(g => (
-                <NavLink key={g.id} to={`/groups?groupId=${g.id}`} className={linkClass}>
-                  <span className="w-3 h-3 rounded-sm flex-shrink-0" style={{ backgroundColor: g.color }} />
-                  <span className="flex-1 truncate text-xs">{g.name}</span>
-                  <span className="text-[10px] text-zinc-400 dark:text-zinc-600">{g.contact_count}</span>
-                </NavLink>
-              ))}
-            </div>
-          )}
-          <NavLink to="/groups" className={({ isActive }) =>
-            `flex items-center gap-2 px-3 py-1.5 ml-4 rounded-lg text-xs transition-colors ${
-              isActive ? 'text-violet-600 dark:text-violet-400' : 'text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400'
-            }`
-          }>
-            + Manage Groups
           </NavLink>
         </div>
 
@@ -274,26 +178,10 @@ export default function Sidebar() {
             )}
           </div>
         )}
-
-        {/* Tags link */}
-        <div className="mt-4">
-          <NavLink to="/tags" className={linkClass}>
-            <TagsIcon className="w-4 h-4 flex-shrink-0" />
-            <span className="flex-1">Tags</span>
-          </NavLink>
-        </div>
       </nav>
 
       {/* Footer */}
       <div className="px-3 py-3 border-t border-zinc-200 dark:border-zinc-800/60 space-y-0.5">
-        <NavLink to="/import" className={linkClass}>
-          <ImportIcon className="w-4 h-4 flex-shrink-0" />
-          <span className="flex-1">Your Network</span>
-        </NavLink>
-        <NavLink to="/refer" className={linkClass}>
-          <ReferIcon className="w-4 h-4 flex-shrink-0" />
-          <span className="flex-1">Refer a Friend</span>
-        </NavLink>
         <NavLink to="/settings" className={linkClass}>
           <SettingsIcon className="w-4 h-4 flex-shrink-0" />
           <span className="flex-1">Settings</span>
@@ -326,30 +214,11 @@ function DashboardIcon({ className }: { className?: string }) {
   )
 }
 
-function PipelineIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="1" y="2" width="3.5" height="12" rx="0.75" />
-      <rect x="6.25" y="2" width="3.5" height="8" rx="0.75" />
-      <rect x="11.5" y="2" width="3.5" height="5" rx="0.75" />
-    </svg>
-  )
-}
-
 function ContactsIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="8" cy="5" r="3" />
       <path d="M2.5 14c0-3 2.5-5 5.5-5s5.5 2 5.5 5" />
-    </svg>
-  )
-}
-
-function TagsIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M1.5 8.8V2.5a1 1 0 011-1h6.3a1 1 0 01.7.3l5 5a1 1 0 010 1.4l-6.3 6.3a1 1 0 01-1.4 0l-5-5a1 1 0 01-.3-.7z" />
-      <circle cx="5" cy="5" r="1" fill="currentColor" />
     </svg>
   )
 }
@@ -362,29 +231,11 @@ function InteractionsIcon({ className }: { className?: string }) {
   )
 }
 
-function RemindersIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M8 14.5c-.5 0-1-.2-1.4-.6-.4-.4-.6-.9-.6-1.4h4c0 .5-.2 1-.6 1.4-.4.4-.9.6-1.4.6z" />
-      <path d="M4 6.5a4 4 0 018 0c0 2 .5 3.5 1.5 4.5H2.5C3.5 10 4 8.5 4 6.5z" />
-    </svg>
-  )
-}
-
 function BellIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="8" cy="8" r="6.5" />
       <path d="M8 4v4l2.5 2.5" />
-    </svg>
-  )
-}
-
-function ImportIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M8 2v8M4.5 6.5L8 10l3.5-3.5" />
-      <path d="M2 11v2a1 1 0 001 1h10a1 1 0 001-1v-2" />
     </svg>
   )
 }
@@ -411,63 +262,6 @@ function MoonIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M14 8.5A6.5 6.5 0 017.5 2 5.5 5.5 0 1014 8.5z" />
-    </svg>
-  )
-}
-
-function MapIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M1 3.5l4.5-2 5 2.5 4.5-2v11l-4.5 2-5-2.5-4.5 2z" />
-      <path d="M5.5 1.5v11M10.5 4v11" />
-    </svg>
-  )
-}
-
-function CopilotIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M8 1v2M8 13v2M1 8h2M13 8h2" />
-      <circle cx="8" cy="8" r="3" />
-      <path d="M5.5 5.5L4 4M10.5 5.5L12 4M5.5 10.5L4 12M10.5 10.5L12 12" />
-    </svg>
-  )
-}
-
-function ReferIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 14v-1a3 3 0 00-3-3H7a3 3 0 00-3 3v1" />
-      <circle cx="8" cy="5" r="2.5" />
-      <path d="M13.5 6.5l1 1 2-2" />
-    </svg>
-  )
-}
-
-function OnboardingIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M2 2h12v12H2z" rx="2" />
-      <path d="M5 8h6M5 5h6M5 11h3" />
-    </svg>
-  )
-}
-
-function WorkspaceIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="1.5" y="1.5" width="13" height="13" rx="1.5" />
-      <path d="M6 1.5v13" />
-    </svg>
-  )
-}
-
-function RadarIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="8" cy="8" r="2" />
-      <circle cx="8" cy="8" r="4.5" />
-      <circle cx="8" cy="8" r="6.5" />
     </svg>
   )
 }
