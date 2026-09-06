@@ -95,40 +95,14 @@ export default function Sidebar() {
 
       {/* Main Navigation */}
       <nav className="flex-1 px-3 py-4 overflow-y-auto">
-        {/* Favorites */}
-        {favorites.length > 0 && (
-          <div className="mb-4 pb-3 border-b border-zinc-200 dark:border-zinc-800/60">
-            <p className="px-3 py-1 text-[10px] font-semibold text-zinc-400 dark:text-zinc-600 uppercase tracking-wider">Favorites</p>
-            <div className="space-y-0.5 mt-1">
-              {favorites.map(fav => (
-                <button key={fav.id}
-                  onClick={() => navigate(getFavoriteRoute(fav))}
-                  className="flex items-center gap-2 px-3 py-2 w-full text-left rounded-lg text-sm font-medium transition-colors text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/50">
-                  <span className="w-4 text-center flex-shrink-0 text-xs">{getFavoriteIcon(fav)}</span>
-                  <span className="flex-1 truncate text-xs">{fav.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
         <div className="space-y-0.5">
           <NavLink to="/" end className={linkClass}>
             <DashboardIcon className="w-4 h-4 flex-shrink-0" />
-            <span className="flex-1">Home</span>
-            {keepInTouchBadge > 0 && (
-              <span className="min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white px-1">
-                {keepInTouchBadge > 99 ? '99+' : keepInTouchBadge}
-              </span>
-            )}
+            <span className="flex-1">Recent</span>
           </NavLink>
-          <NavLink to="/contacts" className={linkClass}>
+          <NavLink to="/people" className={linkClass}>
             <ContactsIcon className="w-4 h-4 flex-shrink-0" />
-            <span className="flex-1">Contacts</span>
-          </NavLink>
-          <NavLink to="/interactions" className={linkClass}>
-            <InteractionsIcon className="w-4 h-4 flex-shrink-0" />
-            <span className="flex-1">Timeline</span>
+            <span className="flex-1">People</span>
           </NavLink>
           <NavLink to="/review" className={({ isActive }) =>
             `flex items-center gap-2 px-3 py-1.5 ml-6 rounded-lg text-xs transition-colors ${
@@ -142,42 +116,7 @@ export default function Sidebar() {
               </span>
             )}
           </NavLink>
-          <NavLink to="/reminders" className={linkClass}>
-            <BellIcon className="w-4 h-4 flex-shrink-0" />
-            <span className="flex-1">Reminders</span>
-            {reminderBadge > 0 && (
-              <span className="min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white dark:text-zinc-950 px-1">
-                {reminderBadge > 99 ? '99+' : reminderBadge}
-              </span>
-            )}
-          </NavLink>
         </div>
-
-        {/* Views Section */}
-        {views.length > 0 && (
-          <div className="mt-4">
-            <button onClick={() => setViewsOpen(!viewsOpen)}
-              className="flex items-center gap-1 px-3 py-1.5 w-full text-left">
-              <svg className={`w-3 h-3 text-zinc-400 transition-transform ${viewsOpen ? 'rotate-90' : ''}`} viewBox="0 0 16 16" fill="currentColor">
-                <path d="M6 3l5 5-5 5z" />
-              </svg>
-              <span className="text-[10px] font-semibold text-zinc-400 dark:text-zinc-600 uppercase tracking-wider">Views</span>
-              <span className="text-[10px] text-zinc-400 dark:text-zinc-600 ml-auto">{views.length}</span>
-            </button>
-            {viewsOpen && (
-              <div className="space-y-0.5 mt-1">
-                {views.map(v => (
-                  <button key={v.id}
-                    onClick={() => navigate(`/contacts?viewId=${v.id}`)}
-                    className="flex items-center gap-2 px-3 py-2 w-full text-left rounded-lg text-sm font-medium transition-colors text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/50">
-                    <span className="w-4 text-center flex-shrink-0 text-xs">{v.emoji || '📋'}</span>
-                    <span className="flex-1 truncate text-xs">{v.name}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
       </nav>
 
       {/* Footer */}

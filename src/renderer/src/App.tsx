@@ -1,11 +1,10 @@
 import { HashRouter, Routes, Route } from 'react-router-dom'
 import { createContext, useContext, useEffect, useState } from 'react'
 import AppLayout from './components/layout/AppLayout'
-import Dashboard from './pages/Dashboard'
-import Contacts from './pages/Contacts'
-import Interactions from './pages/Interactions'
+import Home from './pages/Home'
+import People from './pages/People'
+import Person from './pages/Person'
 import ReviewQueue from './pages/ReviewQueue'
-import Reminders from './pages/Reminders'
 import Settings from './pages/Settings'
 import Auth from './pages/Auth'
 import { AuthProvider, useAuth } from './lib/auth'
@@ -85,11 +84,10 @@ function AuthGate() {
       <HashRouter>
         <Routes>
           <Route element={<AppLayout />}>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/contacts" element={<Contacts />} />
-            <Route path="/interactions" element={<Interactions />} />
+            <Route path="/" element={<Home />} />
+            <Route path="/people" element={<People />} />
+            <Route path="/people/:id" element={<Person />} />
             <Route path="/review" element={<ReviewQueue />} />
-            <Route path="/reminders" element={<Reminders />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
         </Routes>

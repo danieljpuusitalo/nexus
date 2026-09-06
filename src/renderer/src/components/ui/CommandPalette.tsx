@@ -43,8 +43,9 @@ export default function CommandPalette({ open, onClose }: Props) {
     // Actions (always shown, filtered by query)
     const actions = [
       { id: 'action-add', label: 'Add contact', sublabel: 'Ctrl+N', section: 'Actions', action: () => { onClose(); document.dispatchEvent(new KeyboardEvent('keydown', { key: 'n', ctrlKey: true })) } },
-      { id: 'action-dashboard', label: 'Go to Dashboard', section: 'Actions', action: () => { onClose(); navigate('/') } },
-      { id: 'action-contacts', label: 'Go to Contacts', section: 'Actions', action: () => { onClose(); navigate('/contacts') } },
+      { id: 'action-recent', label: 'Go to Recent', section: 'Actions', action: () => { onClose(); navigate('/') } },
+      { id: 'action-people', label: 'Go to People', section: 'Actions', action: () => { onClose(); navigate('/people') } },
+      { id: 'action-review', label: 'Who is this?', section: 'Actions', action: () => { onClose(); navigate('/review') } },
       { id: 'action-theme', label: 'Toggle theme', sublabel: 'Light/Dark', section: 'Actions', action: () => { toggleTheme(); onClose() } },
       { id: 'action-export', label: 'Export CSV', section: 'Actions', action: () => { window.api.data.exportCsv(); onClose() } },
       { id: 'action-backup', label: 'Back up now', sublabel: 'Safety copy', section: 'Actions', action: () => { window.api.data.backup(); onClose() } },
@@ -66,7 +67,7 @@ export default function CommandPalette({ open, onClose }: Props) {
         label: `${c.first_name} ${c.last_name}`.trim(),
         sublabel: c.company || c.email || undefined,
         section: 'Contacts',
-        action: () => { onClose(); navigate(`/contacts?contactId=${c.id}`) }
+        action: () => { onClose(); navigate(`/people/${c.id}`) }
       })
     }
 
