@@ -39,6 +39,8 @@ export type ResolutionTier =
   | 'calendar_scoped'
   | 'global_unique'
   | 'manual'
+  /** Nobody matched, so this person was created from the conversation itself. */
+  | 'discovered'
   | 'ambiguous'
   | 'unresolved'
 
@@ -191,9 +193,53 @@ const TIER_RANK: ResolutionTier[] = [
   'email_exact',
   'calendar_scoped',
   'global_unique',
+  'discovered',
   'ambiguous',
   'unresolved',
 ]
+
+/**
+ * Creates a person from a conversation they were in.
+ *
+ * People are discovered, not imported. Someone is in your address book because
+ * you had a conversation with them, which the record already knows — so there
+ * is no import step, no "add contact", and no empty state to stare at.
+ *
+ * Only called when nothing matched. An *ambiguous* name is never given a new
+ * person: several existing people fit it, so the right answer is almost
+ * certainly one of them and inventing a duplicate would be the worst outcome.
+ */
+function discoverPerson(
+  db: Database.Database,
+  raw: RawParticipant
+): { id: number; name: string } | null {
+  const email = (raw.email || '').trim().toLowerCase()
+  const name = (raw.name || '').trim()
+
+  // Fall back to the address's local part so a person found only by email is
+  // still called something: "davide.mazzanti@acme.com" -> "Davide Mazzanti".
+  const fromEmail = email
+    ? email
+        .split('@')[0]
+        .split(/[._-]+/)
+        .filter(Boolean)
+        .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(' ')
+    : ''
+
+  const display = name || fromEmail
+  if (!display) return null
+
+  const parts = display.split(/\s+/)
+  const firstName = parts[0]
+  const lastName = parts.length > 1 ? parts.slice(1).join(' ') : ''
+
+  const info = db
+    .prepare('INSERT INTO contacts (first_name, last_name, email) VALUES (?, ?, ?)')
+    .run(firstName, lastName, email)
+
+  return { id: Number(info.lastInsertRowid), name: `${firstName} ${lastName}`.trim() }
+}
 
 /**
  * Collapses several mentions of the same person into one participant link.
@@ -302,7 +348,24 @@ export function recordMeeting(
 
   // One transaction: a meeting without its participants is a corrupt ledger row
   // that nothing would ever revisit, because the dedupe key would say it exists.
+  // Discovered people are created in here too, so a failed write cannot leave
+  // behind a person who belongs to no conversation.
   db.transaction(() => {
+    for (const p of resolved) {
+      if (p.contactId !== null || p.isSelf) continue
+      // An ambiguous name means several known people fit it. Creating another
+      // one would turn a question into a duplicate.
+      if (p.resolution === 'ambiguous') continue
+
+      const person = discoverPerson(db, p.raw)
+      if (person) {
+        p.contactId = person.id
+        p.contactName = person.name
+        p.resolution = 'discovered'
+        p.resolvedVia = p.raw.email ? 'discovered-email' : 'discovered-name'
+      }
+    }
+
     const info = insertMeeting.run(
       meeting.source,
       meeting.sourceId,

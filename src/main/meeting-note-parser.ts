@@ -23,6 +23,12 @@ export interface ParsedNote {
   /** Display names, deduped. Used when no email is present. */
   attendeeNames: string[]
   /**
+   * Attendees with their name and address kept together, when the source gave
+   * both for one person ("Sarah Chen <sarah@acme.com>"). The flat lists above
+   * lose that pairing, which would otherwise create two people for one human.
+   */
+  attendees: { name?: string; email?: string }[]
+  /**
    * The curated part — the notetaker's own Highlights/Summary section.
    * Empty when the export contains only a raw transcript.
    *
@@ -290,9 +296,16 @@ export function looksLikeName(raw: string): boolean {
 }
 
 /** Splits an attendee list value: "Alice Smith, Bob Jones; Carol <c@x.com>" */
-function splitAttendeeList(value: string): { emails: string[]; names: string[] } {
+function splitAttendeeList(value: string): {
+  emails: string[]
+  names: string[]
+  pairs: { name?: string; email?: string }[]
+} {
   const emails: string[] = []
   const names: string[] = []
+  // "Carol <c@x.com>" is one person, not a name and an unrelated address.
+  // Keeping the pairing lets downstream code create one person instead of two.
+  const pairs: { name?: string; email?: string }[] = []
 
   for (const rawPart of value.split(/[,;|]|\sand\s/i)) {
     const part = rawPart.trim()
@@ -310,10 +323,14 @@ function splitAttendeeList(value: string): { emails: string[]; names: string[] }
       .replace(/\s*[-–]\s*$/, '')
       .trim()
 
-    if (nameOnly && looksLikeName(nameOnly)) names.push(nameOnly)
+    const name = nameOnly && looksLikeName(nameOnly) ? nameOnly : undefined
+    if (name) names.push(name)
+
+    const email = found?.[0]?.toLowerCase()
+    if (name || email) pairs.push({ name, email })
   }
 
-  return { emails, names }
+  return { emails, names, pairs }
 }
 
 /** Parses WebVTT/SRT speaker tags: "<v Alice Smith>" and "Alice Smith: ..." */
@@ -442,6 +459,9 @@ export function parseMeetingNote(text: string, fileName = '', mtime?: Date): Par
       date: json.date || extractDate(fileName) || isoFromDate(mtime) || today(),
       attendeeEmails: json.attendeeEmails ?? [],
       attendeeNames: json.attendeeNames ?? [],
+      // JSON exports list names and addresses in separate arrays with no
+      // reliable correspondence between them, so there is nothing to pair.
+      attendees: [],
       summary: seg.summary,
       actionItems: seg.actionItems,
       transcript: seg.transcript,
@@ -459,14 +479,16 @@ export function parseMeetingNote(text: string, fileName = '', mtime?: Date): Par
   let date = ''
   const emails: string[] = []
   const names: string[] = []
+  const pairs: { name?: string; email?: string }[] = []
   const headerLineIndices = new Set<number>()
 
   lines.forEach((line, i) => {
     const attendeeMatch = line.match(ATTENDEE_LABELS)
     if (attendeeMatch) {
-      const { emails: e, names: n } = splitAttendeeList(attendeeMatch[2])
+      const { emails: e, names: n, pairs: pr } = splitAttendeeList(attendeeMatch[2])
       emails.push(...e)
       names.push(...n)
+      pairs.push(...pr)
       headerLineIndices.add(i)
       return
     }
@@ -517,6 +539,7 @@ export function parseMeetingNote(text: string, fileName = '', mtime?: Date): Par
     date: date || extractDate(body.slice(0, 2000)) || extractDate(fileName) || isoFromDate(mtime) || today(),
     attendeeEmails: dedupe(emails),
     attendeeNames: dedupe(names),
+    attendees: pairs,
     summary: seg.summary,
     actionItems: seg.actionItems,
     transcript: seg.transcript,

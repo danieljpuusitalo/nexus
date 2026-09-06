@@ -1,32 +1,13 @@
 import { HashRouter, Routes, Route } from 'react-router-dom'
-import { createContext, useContext, useEffect, useState, lazy, Suspense } from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
 import AppLayout from './components/layout/AppLayout'
 import Dashboard from './pages/Dashboard'
 import Contacts from './pages/Contacts'
-import Pipeline from './pages/Pipeline'
-import Groups from './pages/Groups'
-import Tags from './pages/Tags'
 import Interactions from './pages/Interactions'
 import ReviewQueue from './pages/ReviewQueue'
 import Reminders from './pages/Reminders'
 import Settings from './pages/Settings'
-import QuickAction from './pages/QuickAction'
-import Import from './pages/Import'
-import KeepInTouch from './pages/KeepInTouch'
-import Locations from './pages/Locations'
-import Onboarding from './pages/Onboarding'
-import Refer from './pages/Refer'
-import MergeFix from './pages/MergeFix'
-import Workspace from './pages/Workspace'
-import Welcome from './pages/Welcome'
-import NetworkSetup from './pages/NetworkSetup'
-import NetworkReveal from './pages/NetworkReveal'
 import Auth from './pages/Auth'
-
-// Lazy-load heavy pages (Leaflet, D3, AI)
-const MapView = lazy(() => import('./pages/MapView'))
-const Copilot = lazy(() => import('./pages/Copilot'))
-const Radar = lazy(() => import('./pages/Radar'))
 import { AuthProvider, useAuth } from './lib/auth'
 import { PlanProvider } from './lib/plan'
 import { ToastProvider } from './components/ui/Toast'
@@ -103,42 +84,17 @@ function AuthGate() {
     <ErrorBoundary>
       <HashRouter>
         <Routes>
-          <Route path="/welcome" element={<Welcome />} />
-          <Route path="/network-setup" element={<NetworkSetup />} />
-          <Route path="/network-reveal" element={<NetworkReveal />} />
           <Route element={<AppLayout />}>
             <Route path="/" element={<Dashboard />} />
-            <Route path="/workspace" element={<Workspace />} />
             <Route path="/contacts" element={<Contacts />} />
-            <Route path="/pipeline" element={<Pipeline />} />
-            <Route path="/groups" element={<Groups />} />
-            <Route path="/tags" element={<Tags />} />
             <Route path="/interactions" element={<Interactions />} />
             <Route path="/review" element={<ReviewQueue />} />
             <Route path="/reminders" element={<Reminders />} />
-            <Route path="/quick-action" element={<QuickAction />} />
-            <Route path="/keep-in-touch" element={<KeepInTouch />} />
-            <Route path="/copilot" element={<Suspense fallback={<LazyFallback />}><Copilot /></Suspense>} />
-            <Route path="/import" element={<Import />} />
-            <Route path="/map" element={<ErrorBoundary><Suspense fallback={<LazyFallback />}><MapView /></Suspense></ErrorBoundary>} />
-            <Route path="/locations" element={<Locations />} />
-            <Route path="/onboarding" element={<Onboarding />} />
-            <Route path="/refer" element={<Refer />} />
             <Route path="/settings" element={<Settings />} />
-            <Route path="/merge" element={<MergeFix />} />
-            <Route path="/radar" element={<ErrorBoundary><Suspense fallback={<LazyFallback />}><Radar /></Suspense></ErrorBoundary>} />
           </Route>
         </Routes>
       </HashRouter>
     </ErrorBoundary>
-  )
-}
-
-function LazyFallback() {
-  return (
-    <div className="h-full flex items-center justify-center">
-      <p className="text-sm text-zinc-400 animate-pulse">Loading...</p>
-    </div>
   )
 }
 

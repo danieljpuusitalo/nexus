@@ -368,15 +368,25 @@ describe('ingestFile', () => {
     expect(interactionCount()).toBe(2)
   })
 
-  it('still records a note that matched nobody, so it is not lost', () => {
+  // People are discovered, not imported: an attendee nobody matched becomes a
+  // person, because you evidently had a conversation with them. No import step,
+  // no "add contact", no empty state.
+  it('creates a person for an attendee nobody matched', () => {
     ingestFile(db, writeNote('orphan.md', 'Attendees: ghost@nowhere.com\n\nSomething useful.'))
-    expect(interactionCount()).toBe(0)
+
+    const created = db
+      .prepare("SELECT * FROM contacts WHERE email = 'ghost@nowhere.com'")
+      .get() as Record<string, unknown> | undefined
+    expect(created).toBeDefined()
+    // Named from the address's local part rather than left blank.
+    expect(created?.first_name).toBe('Ghost')
+
+    expect(interactionCount()).toBe(1)
     const imports = db.prepare('SELECT * FROM note_imports').all() as {
       matched_count: number; unmatched_json: string
     }[]
-    expect(imports).toHaveLength(1)
-    expect(imports[0].matched_count).toBe(0)
-    expect(JSON.parse(imports[0].unmatched_json)).toContain('ghost@nowhere.com')
+    expect(imports[0].matched_count).toBe(1)
+    expect(JSON.parse(imports[0].unmatched_json)).toEqual([])
   })
 
   it('skips unsupported file types', () => {

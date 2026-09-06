@@ -345,6 +345,90 @@ describe('calendar-scoped resolution', () => {
   })
 })
 
+describe('people are discovered, not imported', () => {
+  function contactCount(): number {
+    return (db.prepare('SELECT COUNT(*) AS c FROM contacts').get() as { c: number }).c
+  }
+
+  it('creates a person nobody matched, from their name', () => {
+    const before = contactCount()
+    const r = recordMeeting(db, meeting({ participants: [{ name: 'Nadia Berg' }] }), SELF)
+
+    expect(contactCount()).toBe(before + 1)
+    expect(r.participants[0].resolution).toBe('discovered')
+    expect(r.participants[0].contactId).not.toBeNull()
+
+    const created = db.prepare("SELECT * FROM contacts WHERE first_name = 'Nadia'").get() as
+      Record<string, unknown>
+    expect(created.last_name).toBe('Berg')
+  })
+
+  it('names a person found only by address from its local part', () => {
+    recordMeeting(db, meeting({ participants: [{ email: 'davide.mazzanti@acme.com' }] }), SELF)
+    const created = db
+      .prepare("SELECT * FROM contacts WHERE email = 'davide.mazzanti@acme.com'")
+      .get() as Record<string, unknown>
+    expect(created.first_name).toBe('Davide')
+    expect(created.last_name).toBe('Mazzanti')
+  })
+
+  // The point of discovery is a person per human, not a person per mention.
+  it('reuses the discovered person on the next conversation', () => {
+    recordMeeting(db, meeting({ sourceId: 'a', participants: [{ name: 'Nadia Berg' }] }), SELF)
+    const after = (db.prepare('SELECT COUNT(*) AS c FROM contacts').get() as { c: number }).c
+
+    const second = recordMeeting(
+      db,
+      meeting({ sourceId: 'b', startedAt: '2026-09-05', participants: [{ name: 'Nadia Berg' }] }),
+      SELF
+    )
+    expect((db.prepare('SELECT COUNT(*) AS c FROM contacts').get() as { c: number }).c).toBe(after)
+    expect(second.participants[0].resolution).toBe('global_unique')
+
+    const nadia = (db.prepare("SELECT id FROM contacts WHERE first_name = 'Nadia'")
+      .get() as { id: number }).id
+    expect(getMeetingsForContact(db, nadia)).toHaveLength(2)
+  })
+
+  // An ambiguous name means several known people fit it. Creating another one
+  // turns a question a human can answer into a duplicate nobody notices.
+  it('never invents a person for an ambiguous name', () => {
+    db.prepare('INSERT INTO contacts (first_name, last_name, email) VALUES (?,?,?)').run(
+      'David', 'Smith', 'd@one.com'
+    )
+    db.prepare('INSERT INTO contacts (first_name, last_name, email) VALUES (?,?,?)').run(
+      'David', 'Smith', 'd@two.com'
+    )
+    const before = contactCount()
+    const r = recordMeeting(db, meeting({ participants: [{ name: 'David Smith' }] }), SELF)
+
+    expect(contactCount()).toBe(before)
+    expect(r.participants[0].resolution).toBe('ambiguous')
+  })
+
+  it('never creates a person for the user themselves', () => {
+    const before = contactCount()
+    recordMeeting(db, meeting({ participants: [{ email: 'daniel@4impact.vc' }] }), SELF)
+    expect(contactCount()).toBe(before)
+  })
+
+  it('creates one person when a name and address arrive together', () => {
+    const before = contactCount()
+    const r = recordMeeting(
+      db,
+      meeting({ participants: [{ name: 'Nadia Berg', email: 'nadia@berg.io' }] }),
+      SELF
+    )
+    expect(contactCount()).toBe(before + 1)
+    expect(r.participants).toHaveLength(1)
+    const created = db.prepare("SELECT * FROM contacts WHERE email = 'nadia@berg.io'").get() as
+      Record<string, unknown>
+    // The real name wins over one derived from the address.
+    expect(created.first_name).toBe('Nadia')
+    expect(created.last_name).toBe('Berg')
+  })
+})
+
 describe('resolveParticipants', () => {
   it('reads the contact table once for the whole meeting', () => {
     // Guards the N+1 the naive implementation had: one SELECT per attendee.
@@ -436,12 +520,20 @@ describe('person view queries', () => {
 })
 
 describe('review queue', () => {
-  it('surfaces unplaceable participants and lets a human assign them', () => {
-    const r = recordMeeting(db, meeting({ participants: [{ name: 'Unknown Person' }] }), SELF)
+  it('surfaces ambiguous participants and lets a human assign them', () => {
+    // Only ambiguity reaches the queue now. Someone nobody matched is created
+    // rather than queued, so the queue holds real questions and nothing else.
+    db.prepare('INSERT INTO contacts (first_name, last_name, email) VALUES (?,?,?)').run(
+      'David', 'Smith', 'd@one.com'
+    )
+    db.prepare('INSERT INTO contacts (first_name, last_name, email) VALUES (?,?,?)').run(
+      'David', 'Smith', 'd@two.com'
+    )
+    const r = recordMeeting(db, meeting({ participants: [{ name: 'David Smith' }] }), SELF)
 
     const queue = getAmbiguousParticipants(db) as { id: number; raw_name: string }[]
     expect(queue).toHaveLength(1)
-    expect(queue[0].raw_name).toBe('Unknown Person')
+    expect(queue[0].raw_name).toBe('David Smith')
 
     const marta = (db.prepare("SELECT id FROM contacts WHERE email = 'marta@example.com'")
       .get() as { id: number }).id

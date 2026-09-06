@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTheme } from '../../App'
-import type { Contact, Tag, Group } from '../../types'
+import type { Contact } from '../../types'
 
 interface Props {
   open: boolean
@@ -26,22 +26,12 @@ export default function CommandPalette({ open, onClose }: Props) {
   const listRef = useRef<HTMLDivElement>(null)
 
   const [contacts, setContacts] = useState<Contact[]>([])
-  const [groups, setGroups] = useState<Group[]>([])
-  const [tags, setTags] = useState<Tag[]>([])
 
   useEffect(() => {
     if (open) {
       setQuery('')
       setSelectedIndex(0)
-      Promise.all([
-        window.api.contacts.getAll(),
-        window.api.groups.getAll(),
-        window.api.tags.getAll()
-      ]).then(([c, g, t]) => {
-        setContacts(c as Contact[])
-        setGroups(g as Group[])
-        setTags(t as Tag[])
-      })
+      window.api.contacts.getAll().then((c: unknown) => setContacts(c as Contact[]))
       setTimeout(() => inputRef.current?.focus(), 50)
     }
   }, [open])
@@ -54,18 +44,11 @@ export default function CommandPalette({ open, onClose }: Props) {
     const actions = [
       { id: 'action-add', label: 'Add contact', sublabel: 'Ctrl+N', section: 'Actions', action: () => { onClose(); document.dispatchEvent(new KeyboardEvent('keydown', { key: 'n', ctrlKey: true })) } },
       { id: 'action-dashboard', label: 'Go to Dashboard', section: 'Actions', action: () => { onClose(); navigate('/') } },
-      { id: 'action-pipeline', label: 'Go to Pipeline', section: 'Actions', action: () => { onClose(); navigate('/pipeline') } },
       { id: 'action-contacts', label: 'Go to Contacts', section: 'Actions', action: () => { onClose(); navigate('/contacts') } },
       { id: 'action-theme', label: 'Toggle theme', sublabel: 'Light/Dark', section: 'Actions', action: () => { toggleTheme(); onClose() } },
       { id: 'action-export', label: 'Export CSV', section: 'Actions', action: () => { window.api.data.exportCsv(); onClose() } },
-      { id: 'action-copilot', label: 'Open Copilot', sublabel: 'AI', section: 'Actions', action: () => { onClose(); navigate('/copilot') } },
-      { id: 'action-kit', label: 'Keep In Touch', section: 'Actions', action: () => { onClose(); navigate('/keep-in-touch') } },
-      { id: 'action-quickaction', label: 'Quick Action', section: 'Actions', action: () => { onClose(); navigate('/quick-action') } },
-      { id: 'action-import', label: 'Start an import', section: 'Actions', action: () => { onClose(); navigate('/import') } },
       { id: 'action-backup', label: 'Back up now', sublabel: 'Safety copy', section: 'Actions', action: () => { window.api.data.backup(); onClose() } },
-      { id: 'action-map', label: 'Open Map', sublabel: 'Locations', section: 'Actions', action: () => { onClose(); navigate('/map') } },
       { id: 'action-settings', label: 'Settings', section: 'Actions', action: () => { onClose(); navigate('/settings') } },
-      { id: 'action-workspace', label: 'Workspace', section: 'Actions', action: () => { onClose(); navigate('/workspace') } },
     ]
 
     // Contacts
@@ -87,36 +70,6 @@ export default function CommandPalette({ open, onClose }: Props) {
       })
     }
 
-    // Groups
-    const filteredGroups = q
-      ? groups.filter(g => g.name.toLowerCase().includes(q)).slice(0, 5)
-      : groups.slice(0, 3)
-
-    for (const g of filteredGroups) {
-      items.push({
-        id: `group-${g.id}`,
-        label: g.name,
-        sublabel: 'Group',
-        section: 'Groups',
-        action: () => { onClose(); navigate('/groups') }
-      })
-    }
-
-    // Tags
-    const filteredTags = q
-      ? tags.filter(t => t.name.toLowerCase().includes(q)).slice(0, 5)
-      : tags.slice(0, 3)
-
-    for (const t of filteredTags) {
-      items.push({
-        id: `tag-${t.id}`,
-        label: t.name,
-        sublabel: 'Tag',
-        section: 'Tags',
-        action: () => { onClose(); navigate('/tags') }
-      })
-    }
-
     // Actions filtered
     const filteredActions = q
       ? actions.filter(a => a.label.toLowerCase().includes(q))
@@ -126,7 +79,7 @@ export default function CommandPalette({ open, onClose }: Props) {
 
     setResults(items)
     setSelectedIndex(0)
-  }, [query, contacts, groups, tags])
+  }, [query, contacts])
 
   useEffect(() => {
     buildResults()
@@ -183,7 +136,7 @@ export default function CommandPalette({ open, onClose }: Props) {
               value={query}
               onChange={e => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Search contacts, groups, tags, or actions..."
+              placeholder="Search contacts or actions..."
               className="w-full py-3.5 text-sm bg-transparent text-zinc-900 dark:text-zinc-200 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 outline-none"
             />
             <kbd className="px-1.5 py-0.5 text-[10px] font-mono text-zinc-400 dark:text-zinc-500 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700/60 rounded flex-shrink-0">ESC</kbd>

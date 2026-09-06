@@ -78,10 +78,6 @@ export default function Dashboard() {
     id: number; first_name: string; last_name: string; company: string;
     photo_url: string; days_since: number; message: string
   } | null>(null)
-  const [uncategorizedCount, setUncategorizedCount] = useState(0)
-  const [checklistProgress, setChecklistProgress] = useState<{ done: number; total: number }>({ done: 0, total: 15 })
-  const [checklistDismissed, setChecklistDismissed] = useState(true)
-
   useEffect(() => {
     Promise.all([
       window.api.contacts.count().then(setContactCount),
@@ -94,14 +90,6 @@ export default function Dashboard() {
       window.api.dashboard.getActivityFeed(15).then(r => setActivityFeed(r as ActivityEvent[])),
       window.api.dashboard.getRelationshipHealth().then(r => setHealthCounts(r as HealthCounts)),
       window.api.dashboard.getNetworkUpdates(5).then(r => setNetworkUpdates(r as NetworkUpdate[])),
-      window.api.contacts.countUncategorized().then(c => setUncategorizedCount(c as number)),
-      window.api.onboarding.getProgress().then((prog: unknown) => {
-        const p = prog as Record<string, string>
-        setChecklistProgress({ done: Object.keys(p).length, total: 15 })
-      }),
-      window.api.settings.get('checklist_dismissed').then((v: unknown) => {
-        setChecklistDismissed(v === 'true')
-      }),
       window.api.dashboard.getReconnectionSuggestion().then((r: unknown) => setReconnection(r as typeof reconnection)),
       window.api.google.getStatus().then((status: unknown) => {
         const s = status as { connected: boolean }
@@ -237,21 +225,6 @@ export default function Dashboard() {
               {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            {!checklistDismissed && checklistProgress.done < checklistProgress.total && (
-              <button onClick={() => navigate('/onboarding')}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 rounded-lg transition-colors border border-indigo-200 dark:border-indigo-800/40">
-                Checklist {checklistProgress.done}/{checklistProgress.total}
-              </button>
-            )}
-            {uncategorizedCount > 0 && (
-              <button onClick={() => navigate('/quick-action')}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/20 hover:bg-violet-100 dark:hover:bg-violet-900/30 rounded-lg transition-colors border border-violet-200 dark:border-violet-800/40">
-                {'\u{26A1}'} Quick Action
-                <span className="bg-violet-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">{uncategorizedCount}</span>
-              </button>
-            )}
-          </div>
         </div>
 
         {/* Inline Stat Bar */}
@@ -343,9 +316,6 @@ export default function Dashboard() {
           <section className="mb-8 pb-6 border-b border-zinc-200 dark:border-zinc-800/60">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-xs font-semibold text-red-500 dark:text-red-400 uppercase tracking-wider">Reach Out Today</h2>
-              <button onClick={() => navigate('/keep-in-touch')} className="text-[10px] text-violet-600 dark:text-violet-400 hover:text-violet-500 font-medium">
-                View all
-              </button>
             </div>
             <div className="space-y-1">
               {keepInTouchDue.slice(0, 5).map(c => {

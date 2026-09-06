@@ -158,16 +158,27 @@ export function matchNoteToContacts(
 /**
  * A parsed note's attendees as ledger participants.
  *
- * Emails and display names arrive in separate lists because most exports carry
- * one or the other, rarely both for the same person. They stay separate here:
- * pairing "Davide Mazzanti" to "davide@acme.com" by position would be a guess,
- * and the resolver's whole contract is that it does not guess. Two entries that
- * turn out to be the same contact collapse when the links are deduped.
+ * Prefers the paired list, where the parser saw a name and an address together
+ * in one attendee entry ("Sarah Chen <sarah@acme.com>") and kept them joined.
+ * That pairing matters now that unmatched people are created rather than
+ * queued: without it, one human arrives as a nameless address and an
+ * address-less name, and becomes two people.
+ *
+ * Anything the pairing missed is added on its own. Names and addresses are
+ * never paired by position — that would be a guess, and the resolver's contract
+ * is that it does not guess.
  */
 function participantsOf(note: ParsedNote): RawParticipant[] {
+  const pairs = note.attendees ?? []
+  const paired = pairs.filter(p => p.name || p.email)
+
+  const claimedEmails = new Set(paired.map(p => (p.email || '').toLowerCase()).filter(Boolean))
+  const claimedNames = new Set(paired.map(p => p.name || '').filter(Boolean))
+
   return [
-    ...note.attendeeEmails.map(email => ({ email })),
-    ...note.attendeeNames.map(name => ({ name })),
+    ...paired,
+    ...note.attendeeEmails.filter(e => !claimedEmails.has(e.toLowerCase())).map(email => ({ email })),
+    ...note.attendeeNames.filter(n => !claimedNames.has(n)).map(name => ({ name })),
   ]
 }
 
