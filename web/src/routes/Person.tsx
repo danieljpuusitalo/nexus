@@ -14,7 +14,9 @@ import Conversation from '../components/Conversation'
 import Grid from '../components/Grid'
 import {
   ago,
+  balance,
   conversationsFor,
+  loopsFor,
   initials,
   load,
   longDate,
@@ -48,6 +50,7 @@ export default function Person() {
   const dates = conversations.map(c => c.started_at)
   const r = rhythm(dates)
   const mix = sourceMix(conversations)
+  const bal = balance(loopsFor(person.id))
 
   return (
     <div className="record">
@@ -100,6 +103,49 @@ export default function Person() {
               <span>read from transcript</span>
             </div>
           )}
+        </div>
+
+        {/* Both directions, always, even when one side is empty. Showing only
+            what you are owed would make this an extraction tool. */}
+        <div className="balance">
+          <section>
+            <h4>
+              You owe <b>{bal.iOwe.length}</b>
+            </h4>
+            {bal.iOwe.length === 0 ? (
+              <p className="none">Nothing outstanding.</p>
+            ) : (
+              <ul>
+                {bal.iOwe.map(l => (
+                  <li key={l.text}>{l.text}</li>
+                ))}
+              </ul>
+            )}
+            {bal.iPromised > 0 && (
+              <div className="kept-note">
+                {bal.iDelivered} of {bal.iPromised} kept
+              </div>
+            )}
+          </section>
+          <section>
+            <h4>
+              They owe <b>{bal.theyOwe.length}</b>
+            </h4>
+            {bal.theyOwe.length === 0 ? (
+              <p className="none">Nothing outstanding.</p>
+            ) : (
+              <ul>
+                {bal.theyOwe.map(l => (
+                  <li key={l.text}>{l.text}</li>
+                ))}
+              </ul>
+            )}
+            {bal.theyPromised > 0 && (
+              <div className="kept-note">
+                {bal.theyDelivered} of {bal.theyPromised} kept
+              </div>
+            )}
+          </section>
         </div>
 
         <Grid dates={dates} cell={10} gap={2} />

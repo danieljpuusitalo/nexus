@@ -9,6 +9,22 @@
 
 import snapshot from '../data/snapshot.json'
 
+/**
+ * Something someone said they would do.
+ *
+ * The unit that actually makes a professional relationship work, and the one
+ * thing every notetaker records verbatim and then throws away. `owner` is
+ * recoverable from the transcript: "I'll send that over" is mine, "you'll send
+ * that over" is theirs.
+ */
+export interface Commitment {
+  text: string
+  owner: 'me' | 'them'
+  done: boolean
+  /** ISO date, when one was actually stated. Most are not. */
+  due?: string
+}
+
 export interface Conversation {
   id: number
   /** Notetaker that captured it. '' or 'file' when unrecognised. */
@@ -19,11 +35,11 @@ export interface Conversation {
   duration_minutes: number | null
   /** Verbatim from the source. Never generated. Always wins. */
   summary: string
-  action_items: string[]
+  commitments: Commitment[]
   has_transcript: boolean
   /** Written by a model when the source gave nothing usable. */
   generated_summary?: string
-  generated_action_items?: string[]
+  generated_commitments?: Commitment[]
   generated_model?: string
   /** Other attendees, already resolved to display names. */
   people: string[]
@@ -113,6 +129,12 @@ export function bucket(iso: string): string {
   if (days <= 93) return 'Last three months'
   if (days <= 365) return 'This year'
   return 'Earlier'
+}
+
+export function shortDate(iso: string): string {
+  const d = asDate(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 }
 
 export function longDate(iso: string): string {
@@ -219,4 +241,84 @@ export function sourceMix(convs: Conversation[]): { source: string; n: number }[
   return [...m.entries()]
     .map(([source, n]) => ({ source, n }))
     .sort((a, b) => b.n - a.n)
+}
+
+/* ----------------------------------------------------------- commitments -- */
+
+export interface OpenLoop extends Commitment {
+  conversationId: number
+  conversationTitle: string
+  agreedAt: string
+  personId: number
+  personName: string
+  /** True when a stated due date has passed. */
+  late: boolean
+  /** Generated commitments are traceable to a model, not to a quote. */
+  inferred: boolean
+}
+
+function loopsOf(c: Conversation): { commitment: Commitment; inferred: boolean }[] {
+  return [
+    ...(c.commitments ?? []).map(x => ({ commitment: x, inferred: false })),
+    ...(c.generated_commitments ?? []).map(x => ({ commitment: x, inferred: true })),
+  ]
+}
+
+/** Every commitment across the whole record, newest agreement first. */
+export function allLoops(): OpenLoop[] {
+  const byId = new Map(data.people.map(p => [p.id, p.name]))
+  const out: OpenLoop[] = []
+
+  for (const c of data.conversations) {
+    for (const { commitment, inferred } of loopsOf(c)) {
+      // A commitment belongs to the relationship it was made in. With several
+      // people in the room the first resolved person carries it, which is a
+      // simplification the ledger will need to revisit once meetings routinely
+      // have five attendees.
+      const personId = c.person_ids[0]
+      if (personId === undefined) continue
+      out.push({
+        ...commitment,
+        conversationId: c.id,
+        conversationTitle: c.title,
+        agreedAt: c.started_at,
+        personId,
+        personName: byId.get(personId) ?? 'Unknown',
+        late: !!commitment.due && !commitment.done && new Date(commitment.due) < new Date(),
+        inferred,
+      })
+    }
+  }
+  return out.sort((a, b) => b.agreedAt.localeCompare(a.agreedAt))
+}
+
+export function loopsFor(personId: number): OpenLoop[] {
+  return allLoops().filter(l => l.personId === personId)
+}
+
+/**
+ * What a relationship owes in each direction.
+ *
+ * Symmetric on purpose. A tool that only shows what you are owed is an
+ * extraction machine; the list that actually builds a reputation is the one
+ * where you are the debtor.
+ */
+export function balance(loops: OpenLoop[]): {
+  iOwe: OpenLoop[]
+  theyOwe: OpenLoop[]
+  iDelivered: number
+  iPromised: number
+  theyDelivered: number
+  theyPromised: number
+} {
+  const mine = loops.filter(l => l.owner === 'me')
+  const theirs = loops.filter(l => l.owner === 'them')
+  return {
+    iOwe: mine.filter(l => !l.done),
+    theyOwe: theirs.filter(l => !l.done),
+    iDelivered: mine.filter(l => l.done).length,
+    iPromised: mine.length,
+    theyDelivered: theirs.filter(l => l.done).length,
+    theyPromised: theirs.length,
+  }
 }

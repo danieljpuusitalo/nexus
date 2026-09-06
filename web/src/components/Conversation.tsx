@@ -12,7 +12,7 @@
 
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { type Conversation as Rec, ago, gutterDate, sourceColour, sourceName } from '../lib/data'
+import { type Conversation as Rec, ago, gutterDate, shortDate, sourceColour, sourceName } from '../lib/data'
 
 const CLAMP = 340
 
@@ -31,7 +31,7 @@ export default function Conversation({
   const inferred = c.generated_summary?.trim() ?? ''
   const isMachine = !written && !!inferred
   const text = written || inferred
-  const todos = written ? c.action_items : c.generated_action_items ?? c.action_items
+  const promises = written ? c.commitments : c.generated_commitments ?? c.commitments
 
   const long = text.length > CLAMP
   const body = open || !long ? text : `${text.slice(0, CLAMP).trimEnd()}…`
@@ -95,12 +95,16 @@ export default function Conversation({
           </p>
         )}
 
-        {todos && todos.length > 0 && (
+        {promises && promises.length > 0 && (
           <>
-            <div className="todo-label">Action items</div>
+            <div className="todo-label">Agreed here</div>
             <ul className="todo">
-              {todos.map(t => (
-                <li key={t}>{t}</li>
+              {promises.map(p => (
+                <li key={p.text} className={p.done ? 'kept' : ''}>
+                  <span className={`owner ${p.owner}`}>{p.owner === 'me' ? 'You' : 'They'}</span>
+                  {p.text}
+                  {p.due && !p.done && <span className="by">by {shortDate(p.due)}</span>}
+                </li>
               ))}
             </ul>
           </>

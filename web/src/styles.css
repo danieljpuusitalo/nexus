@@ -694,3 +694,113 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 }
 .reads b { color: var(--bone); font-weight: 500; font-family: var(--mono); font-size: 12px; }
 .reads .flag { color: var(--amber); }
+
+/* -- commitments --------------------------------------------------------- */
+
+.todo li.kept { color: var(--faint); text-decoration: line-through; text-decoration-color: var(--line-lit); }
+.todo li.kept::before { background: var(--sage-deep); border-color: var(--sage-deep); }
+
+.todo .owner {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  padding: 1px 5px;
+  border-radius: 4px;
+  margin-right: 7px;
+  vertical-align: 1px;
+  border: 1px solid;
+}
+.todo .owner.me { color: var(--ember); border-color: rgba(255, 122, 69, 0.3); }
+.todo .owner.them { color: var(--dim); border-color: var(--line-lit); }
+.todo .by { font-family: var(--mono); font-size: 10px; color: var(--faint); margin-left: 7px; }
+
+.blurb { color: var(--dim); font-size: 13.5px; max-width: 56ch; margin: 0 0 26px; }
+
+.loop-head {
+  display: flex; align-items: baseline; gap: 9px;
+  margin: 0 0 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+.loop-head h2 {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 22px;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+.loop-head span {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--faint);
+  border: 1px solid var(--line-lit);
+  border-radius: 20px;
+  padding: 1px 8px;
+}
+
+.loop {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 11px 12px 11px 10px;
+  border-radius: 9px;
+  transition: background 0.14s var(--ease);
+}
+.loop:hover { background: var(--pane); }
+.loop.late { box-shadow: inset 2px 0 0 var(--amber); }
+
+.tick {
+  width: 15px; height: 15px;
+  flex: none;
+  margin-top: 2px;
+  border: 1px solid var(--line-lit);
+  border-radius: 4px;
+  transition: border-color 0.14s var(--ease), background 0.14s var(--ease);
+}
+.tick:hover { border-color: var(--sage); background: var(--sage-deep); }
+
+.loop-text { font-size: 13.5px; line-height: 1.45; }
+
+.loop-ctx {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 7px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--faint);
+  margin-top: 5px;
+}
+.loop-ctx a { display: inline-flex; align-items: center; gap: 5px; color: var(--dim); }
+.loop-ctx a:hover { color: var(--bone); }
+.loop-ctx .av { width: 16px; height: 16px; font-size: 7px; margin: 0; }
+.loop-ctx .inferred { color: var(--sage-deep); }
+
+.due {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--faint);
+  flex: none;
+  padding-top: 3px;
+}
+.due.on { color: var(--amber); }
+
+/* -- balance, on a person ------------------------------------------------ */
+
+.balance { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--line);
+  border: 1px solid var(--line); border-radius: 9px; overflow: hidden; margin-bottom: 26px; }
+.balance section { background: var(--pane); padding: 13px 15px; }
+.balance h4 {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin: 0 0 9px;
+  display: flex; align-items: center; gap: 7px;
+}
+.balance h4 b { color: var(--bone); font-size: 11px; letter-spacing: 0; }
+.balance ul { list-style: none; margin: 0; padding: 0; }
+.balance li { font-size: 12.5px; color: var(--dim); padding-left: 14px; position: relative; margin-bottom: 5px; line-height: 1.4; }
+.balance li::before { content: ''; position: absolute; left: 0; top: 7px; width: 6px; height: 6px; border-radius: 2px; border: 1px solid var(--line-lit); }
+.balance .none { font-size: 12.5px; color: var(--faint); font-style: italic; }
+.balance .kept-note { font-family: var(--mono); font-size: 9.5px; color: var(--sage); margin-top: 9px; }
