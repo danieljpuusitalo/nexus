@@ -240,6 +240,15 @@ const api = {
 
   // Onboarding
   // Meeting notes dropped in by Granola / Tactiq / Plaud / Fathom / ...
+  ledger: {
+    getForContact: (contactId: number, limit?: number) =>
+      ipcRenderer.invoke('ledger:getForContact', contactId, limit),
+    getParticipants: (meetingId: number) =>
+      ipcRenderer.invoke('ledger:getParticipants', meetingId),
+    getReviewQueue: (limit?: number) => ipcRenderer.invoke('ledger:getReviewQueue', limit),
+    assignParticipant: (participantId: number, contactId: number) =>
+      ipcRenderer.invoke('ledger:assignParticipant', participantId, contactId),
+  },
   notes: {
     getStatus: () => ipcRenderer.invoke('notes:getStatus'),
     chooseFolder: () => ipcRenderer.invoke('notes:chooseFolder'),

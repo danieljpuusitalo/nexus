@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { ContactWithTags, Tag, Group, Interaction, Reminder, CustomField, ImportantDate, ContactRelationship, Contact, InteractionAttachment } from '../types'
 import TagInput from '../components/ui/TagInput'
+import MeetingTimeline from '../components/MeetingTimeline'
 import { useToast } from '../components/ui/Toast'
 
 const TAG_COLORS = [
@@ -849,6 +850,17 @@ export default function ContactDetail({ contact, allTags, allGroups, onBack, onR
               </div>
             </div>
           )}
+
+          {/* ========== MEETING LEDGER (the aggregation layer) ==========
+              Every conversation with this person, whichever notetaker captured
+              it. Renders nothing until the ledger has meetings for them, so it
+              stays invisible for users who have not connected a source. */}
+          <div className="mb-5">
+            <MeetingTimeline
+              contactId={contact.id}
+              contactName={`${contact.first_name} ${contact.last_name}`.trim()}
+            />
+          </div>
 
           {/* ========== INTERACTION TIMELINE (dominant element) ========== */}
           <div className="mb-3">
