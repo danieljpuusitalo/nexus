@@ -1,60 +1,87 @@
-import { HashRouter, NavLink, Route, Routes } from 'react-router-dom'
-import Recent from './routes/Recent'
-import People from './routes/People'
+import { useEffect, useState } from 'react'
+import { HashRouter, NavLink, Route, Routes, useLocation } from 'react-router-dom'
+import Index from './components/Index'
+import Palette from './components/Palette'
 import Person from './routes/Person'
 import Review from './routes/Review'
-import { load } from './lib/data'
+import { AskIcon, PeopleIcon, StreamIcon } from './components/Icons'
+import { initials, load } from './lib/data'
 
 function Rail() {
-  const { people, conversations, queries, self } = load()
-  const cls = ({ isActive }: { isActive: boolean }) => (isActive ? 'on' : '')
+  const { queries, self } = load()
+  const cls = ({ isActive }: { isActive: boolean }) => `tab ${isActive ? 'on' : ''}`
 
   return (
-    <aside className="rail">
-      <div className="wordmark">
-        <b>Nexus</b>
-        <span>the record</span>
-      </div>
+    <nav className="rail">
+      <div className="glyph">N</div>
 
-      <nav className="nav">
-        <NavLink to="/" end className={cls}>
-          Recent
-        </NavLink>
-        <NavLink to="/people" className={cls}>
-          People
-        </NavLink>
-        <NavLink to="/review" className={cls}>
-          Who is this?
-          {queries.length > 0 && <span className="count">{queries.length}</span>}
-        </NavLink>
-      </nav>
+      <NavLink to="/" end className={cls}>
+        <PeopleIcon />
+        <span className="tip">People</span>
+      </NavLink>
+      <NavLink to="/review" className={cls}>
+        <AskIcon />
+        {queries.length > 0 && <span className="badge">{queries.length}</span>}
+        <span className="tip">Who is this?</span>
+      </NavLink>
 
-      <div className="rail-foot">
-        <div>
-          <span className="pulse" />
-          watching for new
-        </div>
-        <div>
-          {conversations.length} conversations · {people.length} people
-        </div>
-        <div style={{ opacity: 0.6 }}>{self}</div>
+      <div className="me" title={self}>
+        {initials(self)}
       </div>
-    </aside>
+    </nav>
+  )
+}
+
+/**
+ * The index pane hides on the review screen: that screen is a queue of
+ * questions, not a record you browse, so a list of people beside it would only
+ * be noise.
+ */
+function Shell() {
+  const [mode, setMode] = useState<'people' | 'stream'>('people')
+  const [palette, setPalette] = useState(false)
+  const location = useLocation()
+  const reviewing = location.pathname.startsWith('/review')
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const typing =
+        document.activeElement instanceof HTMLInputElement ||
+        document.activeElement instanceof HTMLTextAreaElement
+
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setPalette(v => !v)
+        return
+      }
+      if (e.key === 'Escape') setPalette(false)
+      if (e.key === '/' && !typing) {
+        e.preventDefault()
+        document.querySelector<HTMLInputElement>('.finder input')?.focus()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
+  return (
+    <div className="app" style={reviewing ? { gridTemplateColumns: 'var(--rail-w) 1fr' } : undefined}>
+      <Rail />
+      {!reviewing && <Index mode={mode} setMode={setMode} />}
+      <Routes>
+        <Route path="/" element={<Person />} />
+        <Route path="/people/:id" element={<Person />} />
+        <Route path="/review" element={<Review />} />
+      </Routes>
+      {palette && <Palette onClose={() => setPalette(false)} />}
+    </div>
   )
 }
 
 export default function App() {
   return (
     <HashRouter>
-      <div className="shell">
-        <Rail />
-        <Routes>
-          <Route path="/" element={<Recent />} />
-          <Route path="/people" element={<People />} />
-          <Route path="/people/:id" element={<Person />} />
-          <Route path="/review" element={<Review />} />
-        </Routes>
-      </div>
+      <Shell />
     </HashRouter>
   )
 }

@@ -94,14 +94,25 @@ function asDate(iso: string): Date {
   return new Date(iso.length <= 10 ? `${iso}T00:00:00` : iso)
 }
 
-/** Split for the margin: day-month on one line, year beneath. */
-export function marginDate(iso: string): { top: string; sub: string } {
+/** Split for the gutter: day and month on one line, year beneath. */
+export function gutterDate(iso: string): { day: string; year: string } {
   const d = asDate(iso)
-  if (Number.isNaN(d.getTime())) return { top: iso, sub: '' }
+  if (Number.isNaN(d.getTime())) return { day: iso, year: '' }
   return {
-    top: d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }).toUpperCase(),
-    sub: String(d.getFullYear()),
+    day: d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
+    year: String(d.getFullYear()),
   }
+}
+
+/** Coarse buckets for the index. How a person thinks about "when". */
+export function bucket(iso: string): string {
+  const d = asDate(iso)
+  const days = Math.floor((Date.now() - d.getTime()) / 86_400_000)
+  if (days <= 7) return 'This week'
+  if (days <= 31) return 'This month'
+  if (days <= 93) return 'Last three months'
+  if (days <= 365) return 'This year'
+  return 'Earlier'
 }
 
 export function longDate(iso: string): string {
@@ -110,7 +121,7 @@ export function longDate(iso: string): string {
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
-/** "3 weeks ago" — on a record, elapsed time is the useful reading. */
+/** "3 weeks ago", on a record, elapsed time is the useful reading. */
 export function ago(iso: string): string {
   const d = asDate(iso)
   if (Number.isNaN(d.getTime())) return ''
