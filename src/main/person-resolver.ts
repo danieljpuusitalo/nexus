@@ -32,7 +32,7 @@ export interface Resolution {
   ambiguousCount?: number
 }
 
-interface ContactRow {
+export interface ContactRow {
   id: number
   first_name: string
   last_name: string
@@ -64,7 +64,7 @@ export function nameParts(raw: string): string[] {
   return normaliseName(cleaned).split(' ').filter(Boolean)
 }
 
-function loadContacts(db: Database.Database): ContactRow[] {
+export function loadContacts(db: Database.Database): ContactRow[] {
   return db
     .prepare(
       'SELECT id, first_name, last_name, email FROM contacts WHERE deleted_at IS NULL'
@@ -85,13 +85,17 @@ function decide(hits: ContactRow[], method: MatchMethod): Resolution | null {
  * Strategies run strongest-first and stop at the first that yields exactly one
  * candidate. Email is authoritative; everything after it is a heuristic that
  * must be unambiguous to count.
+ *
+ * Pass `cache` when resolving several participants against the same contact
+ * table (one note, one meeting) so the table is read once rather than per name.
  */
 export function resolvePerson(
   db: Database.Database,
-  participant: { name?: string; email?: string }
+  participant: { name?: string; email?: string },
+  cache?: ContactRow[]
 ): Resolution {
   const email = (participant.email || '').toLowerCase().trim()
-  const contacts = loadContacts(db)
+  const contacts = cache ?? loadContacts(db)
 
   if (email) {
     const hit = contacts.find(c => (c.email || '').toLowerCase().trim() === email)

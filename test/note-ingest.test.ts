@@ -152,6 +152,54 @@ describe('matchNoteToContacts', () => {
     expect(unmatched).toContain('nobody@nowhere.com')
   })
 
+  // Regression: matching used to be a bare `WHERE name = ? LIMIT 1`, so when two
+  // contacts shared a name the note was silently filed against whichever row
+  // SQLite happened to return first. A wrong link is invisible once written and
+  // corrupts every per-person view built on top of it, so an ambiguous name must
+  // resolve to nobody and wait for a human.
+  it('refuses to guess between two contacts with the same name', () => {
+    db.prepare('INSERT INTO contacts (first_name, last_name, email) VALUES (?,?,?)').run(
+      'David', 'Smith', 'david@one.com'
+    )
+    db.prepare('INSERT INTO contacts (first_name, last_name, email) VALUES (?,?,?)').run(
+      'David', 'Smith', 'david@two.com'
+    )
+    const note = parseMeetingNote('Attendees: David Smith\n\nNotes.', 'x.md')
+    const { matched, ambiguous, unmatched } = matchNoteToContacts(db, note)
+    expect(matched).toHaveLength(0)
+    expect(ambiguous).toContain('David Smith')
+    // Ambiguous is a different problem from unknown; don't conflate them.
+    expect(unmatched).not.toContain('David Smith')
+  })
+
+  it('files nothing at all for an ambiguous attendee', () => {
+    db.prepare('INSERT INTO contacts (first_name, last_name, email) VALUES (?,?,?)').run(
+      'David', 'Smith', 'david@one.com'
+    )
+    db.prepare('INSERT INTO contacts (first_name, last_name, email) VALUES (?,?,?)').run(
+      'David', 'Smith', 'david@two.com'
+    )
+    const file = writeNote('ambiguous.md', 'Attendees: David Smith\n\nTalked shop.')
+    const result = ingestFile(db, file)
+
+    expect(result?.matched).toBe(0)
+    expect(result?.ambiguous).toBe(1)
+    expect(interactionCount()).toBe(0)
+    // Still queued for manual assignment rather than dropped on the floor.
+    const row = db
+      .prepare('SELECT unmatched_json FROM note_imports')
+      .get() as { unmatched_json: string }
+    expect(JSON.parse(row.unmatched_json)).toContain('David Smith')
+  })
+
+  // The richer resolver is now actually reachable from ingest; it previously sat
+  // unused behind an exact-full-name-only query.
+  it('matches an initial-plus-surname when only one contact fits', () => {
+    const note = parseMeetingNote('Attendees: M. Nowak\n\nCoffee.', 'x.md')
+    const { matched } = matchNoteToContacts(db, note)
+    expect(matched.map(m => m.name)).toContain('Marta Nowak')
+  })
+
   it('excludes the user themselves', () => {
     db.prepare('INSERT INTO contacts (first_name, last_name, email) VALUES (?,?,?)').run(
       'Daniel', 'Uusitalo', 'daniel@4impact.vc'
@@ -269,7 +317,13 @@ describe('ingestFile', () => {
 
 describe('scanNoteFolder', () => {
   it('returns zeroes when no folder is configured', () => {
-    expect(scanNoteFolder(db)).toEqual({ imported: 0, skipped: 0, matched: 0, unmatched: 0 })
+    expect(scanNoteFolder(db)).toEqual({
+      imported: 0,
+      skipped: 0,
+      matched: 0,
+      unmatched: 0,
+      ambiguous: 0,
+    })
   })
 
   it('imports every supported note in the folder', () => {

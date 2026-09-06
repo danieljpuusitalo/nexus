@@ -23,6 +23,7 @@ import path from 'path'
 import crypto from 'crypto'
 import type Database from 'better-sqlite3'
 import { parseMeetingNote, type ParsedNote } from './meeting-note-parser'
+import { resolvePerson, loadContacts, normaliseName } from './person-resolver'
 
 const SUPPORTED_EXTENSIONS = new Set(['.md', '.txt', '.vtt', '.srt', '.json', '.markdown'])
 
@@ -43,6 +44,8 @@ export interface IngestResult {
   skipped: number
   matched: number
   unmatched: number
+  /** Names several contacts fit, which we refused to guess between. */
+  ambiguous: number
 }
 
 interface MatchedContact {
@@ -110,46 +113,58 @@ export function getSelfIdentifiers(db: Database.Database): {
  * Email is the strong signal and is tried first; display names are a fallback
  * for transcripts that only carry speaker labels. The user themselves is
  * excluded by both email and name.
+ *
+ * All name matching goes through `resolvePerson`, which refuses to choose when
+ * several contacts fit. A name we decline to guess at is reported separately
+ * from one nothing matched: both need a human, but for opposite reasons, and
+ * a silent wrong link is the one failure a per-person ledger cannot absorb.
  */
 export function matchNoteToContacts(
   db: Database.Database,
   note: ParsedNote
-): { matched: MatchedContact[]; unmatched: string[] } {
+): { matched: MatchedContact[]; unmatched: string[]; ambiguous: string[] } {
   const self = getSelfIdentifiers(db)
   const matched = new Map<number, string>()
   const unmatched: string[] = []
+  const ambiguous: string[] = []
 
-  const byEmail = db.prepare(
-    'SELECT id, first_name, last_name FROM contacts WHERE lower(email) = ? AND deleted_at IS NULL LIMIT 1'
-  )
-  const byName = db.prepare(
-    `SELECT id, first_name, last_name FROM contacts
-     WHERE lower(trim(first_name || ' ' || last_name)) = ? AND deleted_at IS NULL LIMIT 1`
-  )
+  // One read of the contact table for the whole note, not one per participant.
+  const contacts = loadContacts(db)
+  const byId = new Map(contacts.map(c => [c.id, c]))
+  const label = (id: number): string => {
+    const c = byId.get(id)
+    return c ? `${c.first_name} ${c.last_name}`.trim() : ''
+  }
 
-  type Row = { id: number; first_name: string; last_name: string } | undefined
-  const label = (r: NonNullable<Row>): string => `${r.first_name} ${r.last_name}`.trim()
+  // Accent-fold both sides so "Jörg" in a transcript still recognises the
+  // "Jorg" the user typed into the own-name box (and vice versa).
+  const selfNames = new Set([...self.names].map(normaliseName))
 
   for (const email of note.attendeeEmails) {
     if (self.emails.has(email)) continue
-    const row = byEmail.get(email) as Row
-    if (row) matched.set(row.id, label(row))
+    const hit = resolvePerson(db, { email }, contacts)
+    if (hit.contactId !== null) matched.set(hit.contactId, label(hit.contactId))
     else unmatched.push(email)
   }
 
   for (const name of note.attendeeNames) {
-    const key = name.toLowerCase().trim()
-    if (self.names.has(key)) continue
-    const row = byName.get(key) as Row
-    if (row) matched.set(row.id, label(row))
+    if (selfNames.has(normaliseName(name))) continue
+    const hit = resolvePerson(db, { name }, contacts)
+    if (hit.contactId !== null) {
+      matched.set(hit.contactId, label(hit.contactId))
+      continue
+    }
     // A name that resolved via someone's email is already covered; only report
-    // a name as unmatched when nothing in this note matched it.
-    else if (!unmatched.includes(name)) unmatched.push(name)
+    // a name as needing attention when nothing in this note matched it.
+    if (unmatched.includes(name) || ambiguous.includes(name)) continue
+    if (hit.ambiguousCount) ambiguous.push(name)
+    else unmatched.push(name)
   }
 
   return {
     matched: [...matched].map(([id, name]) => ({ id, name })),
     unmatched,
+    ambiguous,
   }
 }
 
@@ -184,8 +199,11 @@ export function ingestFile(db: Database.Database, filePath: string): IngestResul
 
   const fileName = path.basename(filePath)
   const note = parseMeetingNote(content, fileName, mtime)
-  const { matched, unmatched } = matchNoteToContacts(db, note)
+  const { matched, unmatched, ambiguous } = matchNoteToContacts(db, note)
   const description = buildDescription(note)
+
+  // Both kinds land in the same queue: someone has to look at them either way.
+  const needsAttention = [...unmatched, ...ambiguous]
 
   const insertInteraction = db.prepare(
     "INSERT INTO interactions (contact_id, type, description, date) VALUES (?, 'meeting', ?, ?)"
@@ -208,7 +226,7 @@ export function ingestFile(db: Database.Database, filePath: string): IngestResul
       note.date,
       note.source,
       matched.length,
-      JSON.stringify(unmatched),
+      JSON.stringify(needsAttention),
       note.summary.slice(0, MAX_SUMMARY_CHARS)
     )
   })()
@@ -218,12 +236,19 @@ export function ingestFile(db: Database.Database, filePath: string): IngestResul
     skipped: 0,
     matched: matched.length,
     unmatched: matched.length === 0 ? 1 : 0,
+    ambiguous: ambiguous.length,
   }
 }
 
 /** Scans the configured folder once. Safe to call repeatedly. */
 export function scanNoteFolder(db: Database.Database): IngestResult {
-  const result: IngestResult = { imported: 0, skipped: 0, matched: 0, unmatched: 0 }
+  const result: IngestResult = {
+    imported: 0,
+    skipped: 0,
+    matched: 0,
+    unmatched: 0,
+    ambiguous: 0,
+  }
   const folder = getNotesFolder(db)
   if (!folder) return result
 
@@ -244,6 +269,7 @@ export function scanNoteFolder(db: Database.Database): IngestResult {
     result.imported += outcome.imported
     result.matched += outcome.matched
     result.unmatched += outcome.unmatched
+    result.ambiguous += outcome.ambiguous
   }
 
   return result
