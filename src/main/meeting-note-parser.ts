@@ -146,6 +146,21 @@ export function segmentNote(body: string): {
     summary = other
   }
 
+  // A heading saying "Highlights" does not make the text underneath a summary.
+  // Tactiq files its Highlights under exactly that heading, but they are
+  // timestamped verbatim speech-recognition fragments — real captured output
+  // reads "the consumerator is away. We take the fun money to produce a new
+  // one". Showing that where a summary belongs is worse than showing nothing:
+  // it is unreadable, and it looks like the product wrote it.
+  //
+  // So the same test used on headingless text is applied to the summary
+  // section. Excerpts pulled from the transcript are dropped rather than
+  // promoted, because the transcript itself is already captured in full.
+  if (summary && looksLikeTranscript(summary)) {
+    if (!transcript) transcript = summary
+    summary = ''
+  }
+
   return { summary, actionItems, transcript }
 }
 

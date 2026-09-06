@@ -166,6 +166,39 @@ describe('parseMeetingNote — JSON export', () => {
   })
 })
 
+describe('parseMeetingNote — summary quality', () => {
+  // Verbatim from a real Tactiq export. Tactiq files these under a
+  // "Highlights" heading, but they are timestamped speech-recognition
+  // fragments, not a summary — note "the consumerator is away".
+  const TACTIQ_HIGHLIGHTS = `# Davide Mazzanti and Daniel Uusitalo
+
+  Participants: Daniel Uusitalo, Davide Mazzanti
+
+## Highlights
+07:01 Davide Mazzanti: Etc, but you know it's only one brand so if you say no, we're fine.
+10:44 Davide Mazzanti: Very important towards the brand we had to keep us there to keep the same pricing
+12:28 Davide Mazzanti: and it's important it back. So there is a very long conversation in Germany
+13:31 Davide Mazzanti: the consumerator is away. We take the fun money to produce a new one
+25:43 Daniel Uusitalo: No, I believe it no absolutely believe you god that actually is that I have to say
+`
+
+  it('refuses to treat timestamped transcript fragments as a summary', () => {
+    const r = parseMeetingNote(TACTIQ_HIGHLIGHTS, 'tactiq.txt')
+    // Showing this where a summary belongs is unreadable and looks like the
+    // product wrote it. Better to show nothing and say so.
+    expect(r.summary).toBe('')
+    expect(r.transcript).toContain('the consumerator is away')
+  })
+
+  it('still accepts a real prose summary under the same heading', () => {
+    const r = parseMeetingNote(
+      '# Board call\n\n## Highlights\nARR is ~€1.2M, growing 15% MoM.\nRaising €6M at a €30M pre.\nWants an intro to Northzone.\nFollow up in two weeks.\n',
+      'board.md'
+    )
+    expect(r.summary).toContain('ARR is ~€1.2M')
+  })
+})
+
 describe('parseMeetingNote — fallbacks', () => {
   it('uses the file mtime when the note carries no date', () => {
     const r = parseMeetingNote('Just some notes with no date.', 'notes.txt', new Date(2026, 2, 15))
