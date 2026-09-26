@@ -65,6 +65,15 @@ export default function Person() {
   const mix = sourceMix(conversations)
   const bal = balance(loopsFor(person.id))
   const ex = exchangesWith(person.id)
+  // An empty side is only "nothing" if the conversations were actually heard.
+  // A notetaker that captured nothing is an unknown, never a zero.
+  const uncaptured = conversations.filter(c => c.capture === 'not_captured').length
+  const empty =
+    uncaptured === 0
+      ? 'Nothing outstanding.'
+      : uncaptured === conversations.length
+        ? 'Not known: no conversation was captured.'
+        : `Nothing outstanding in what was captured (${uncaptured} of ${conversations.length} not captured).`
 
   return (
     <div className="record">
@@ -126,7 +135,7 @@ export default function Person() {
               You owe <b>{bal.iOwe.length}</b>
             </h4>
             {bal.iOwe.length === 0 ? (
-              <p className="none">Nothing outstanding.</p>
+              <p className="none">{empty}</p>
             ) : (
               <ul>
                 {bal.iOwe.map(l => (
@@ -145,7 +154,7 @@ export default function Person() {
               They owe <b>{bal.theyOwe.length}</b>
             </h4>
             {bal.theyOwe.length === 0 ? (
-              <p className="none">Nothing outstanding.</p>
+              <p className="none">{empty}</p>
             ) : (
               <ul>
                 {bal.theyOwe.map(l => (

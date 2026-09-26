@@ -31,6 +31,35 @@ export interface Commitment {
    * bookkeeping that survives contact with a real week.
    */
   closed_by?: number
+
+  /*
+   * Provenance, present on anything the extraction engine produced. Optional so
+   * hand-written sample data keeps rendering; see docs/ROADMAP.md.
+   */
+
+  /** The sentence it was said in, verbatim from the transcript. Bone, not sage. */
+  quote?: string
+  /** Who said the quote, as the transcript labels them. */
+  speaker?: string
+  /** Who it is owed to, by name, read from the quote rather than the room. */
+  counterparty?: string
+  /** The due words as spoken ("by Friday"). `due` is set only when unambiguous. */
+  due_phrase?: string
+  confidence?: 'high' | 'medium'
+  /**
+   * What the rest of the record says about it. `none` means nothing was found,
+   * which is not the same as not done, and must never be shown as failure.
+   */
+  evidence?: {
+    state: 'closed' | 'candidate' | 'none'
+    /** Verbatim from the evidence, when there is any. */
+    quote?: string
+    at?: string
+    source?: 'conversation' | 'email'
+    ref?: string
+  }
+  /** Which model and prompt read this, so the corpus can be re-read later. */
+  extraction?: { model: string; prompt_hash: string }
 }
 
 export interface Conversation {
@@ -52,6 +81,13 @@ export interface Conversation {
   /** Other attendees, already resolved to display names. */
   people: string[]
   person_ids: number[]
+  /**
+   * Whether the source was good enough to read at all. `not_captured` means the
+   * transcript is noise, and the interface says so instead of rendering a
+   * fluent summary over it. Absent means not assessed.
+   */
+  capture?: 'ok' | 'not_captured'
+  capture_note?: string
 }
 
 export interface Person {
@@ -119,7 +155,26 @@ export function setStage(id: Stage): void {
   location.reload()
 }
 
-const full = snapshot as unknown as Snapshot
+/**
+ * The real thing, when it exists.
+ *
+ * Phase 3 of docs/ROADMAP.md: the engine writes its output to
+ * `web/src/data/snapshot.local.json`, gitignored because real conversations
+ * never enter this public repo. `import.meta.glob` resolves it at build time
+ * rather than a plain `import`, because a plain import of a file that may not
+ * exist fails the build for everyone who has not run the engine. When it is
+ * missing this is an empty object and the bundled sample wins, exactly as it
+ * always has. Only this one line knows the local file exists; no component
+ * ever learns where its data came from.
+ */
+const localSnapshot = Object.values(
+  import.meta.glob('../data/snapshot.local.json', { eager: true, import: 'default' }) as Record<
+    string,
+    Snapshot
+  >
+)[0]
+
+const full = (localSnapshot ?? snapshot) as unknown as Snapshot
 
 /**
  * Trims the record to a point in its own history and rebuilds everything
@@ -408,6 +463,68 @@ export function balance(loops: OpenLoop[]): {
     iPromised: mine.length,
     theyDelivered: theirs.filter(l => l.done).length,
     theyPromised: theirs.length,
+  }
+}
+
+/**
+ * What one side of the ledger looks like: how many promises, how many still
+ * open, how many of those have gone quiet, how many were kept.
+ */
+export interface ReckoningCounts {
+  promised: number
+  open: number
+  over90: number
+  kept: number
+}
+
+export interface Reckoning {
+  mine: ReckoningCounts
+  theirs: ReckoningCounts
+  /** Everything you owe, oldest promise first: the ones worth clearing first. */
+  iOweOldestFirst: OpenLoop[]
+  /** Everything owed to you, oldest first. Shown, never chased. */
+  owedToMe: OpenLoop[]
+}
+
+/**
+ * The screen that leads: what was promised, in both directions, over a window.
+ *
+ * `promised` counts what was agreed inside the window, because "this year" is
+ * the honest unit a reckoning works in. `open`, `over90` and `kept` describe
+ * the whole relationship regardless of when it started, because a promise
+ * made thirteen months ago that is still open has not stopped being true.
+ * Counts only, per CLAUDE.md rule 3: no percentage, no reliability rate, no
+ * score standing in for a fact someone can check for themselves.
+ */
+export function reckoning(loops: OpenLoop[], now: Date, windowDays = 365): Reckoning {
+  const windowStart = new Date(now.getTime() - windowDays * 86_400_000)
+  const ninetyAgo = new Date(now.getTime() - 90 * 86_400_000)
+  const inWindow = (l: OpenLoop) => {
+    const d = asDate(l.agreedAt)
+    return d >= windowStart && d <= now
+  }
+
+  const countsFor = (owner: 'me' | 'them'): ReckoningCounts => {
+    const all = loops.filter(l => l.owner === owner)
+    const open = all.filter(l => !l.done)
+    return {
+      promised: all.filter(inWindow).length,
+      open: open.length,
+      over90: open.filter(l => asDate(l.agreedAt) < ninetyAgo).length,
+      kept: all.filter(l => l.done).length,
+    }
+  }
+
+  const oldestFirst = (owner: 'me' | 'them') =>
+    loops
+      .filter(l => l.owner === owner && !l.done)
+      .sort((a, b) => a.agreedAt.localeCompare(b.agreedAt))
+
+  return {
+    mine: countsFor('me'),
+    theirs: countsFor('them'),
+    iOweOldestFirst: oldestFirst('me'),
+    owedToMe: oldestFirst('them'),
   }
 }
 

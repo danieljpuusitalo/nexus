@@ -8,7 +8,8 @@ import Loops from './routes/Loops'
 import Today from './routes/Today'
 import Help from './routes/Help'
 import Company from './routes/Company'
-import { AskIcon, GiveIcon, LoopIcon, PeopleIcon, TodayIcon } from './components/Icons'
+import Reckoning from './routes/Reckoning'
+import { AskIcon, GiveIcon, LoopIcon, PeopleIcon, ReckoningIcon, TodayIcon } from './components/Icons'
 import { allLoops, initials, introductions, load } from './lib/data'
 
 function Rail() {
@@ -21,6 +22,10 @@ function Rail() {
     <nav className="rail">
       <div className="glyph">N</div>
 
+      <NavLink to="/reckoning" className={cls}>
+        <ReckoningIcon />
+        <span className="tip">The reckoning</span>
+      </NavLink>
       <NavLink to="/" end className={cls}>
         <TodayIcon />
         <span className="tip">Today</span>
@@ -67,7 +72,8 @@ function Shell() {
     location.pathname === '/' ||
     location.pathname.startsWith('/review') ||
     location.pathname.startsWith('/loops') ||
-    location.pathname.startsWith('/help')
+    location.pathname.startsWith('/help') ||
+    location.pathname.startsWith('/reckoning')
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -95,6 +101,7 @@ function Shell() {
       <Rail />
       {!solo && <Index mode={mode} setMode={setMode} />}
       <Routes>
+        <Route path="/reckoning" element={<Reckoning />} />
         <Route path="/" element={<Today />} />
         <Route path="/people" element={<Person />} />
         <Route path="/people/:id" element={<Person />} />

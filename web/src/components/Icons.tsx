@@ -11,6 +11,14 @@ const base = {
   strokeLinejoin: 'round' as const,
 }
 
+export const ReckoningIcon = () => (
+  <svg {...base}>
+    <path d="M6.5 3.5h8l4.5 4.5v12a1 1 0 0 1-1 1h-11.5a1 1 0 0 1-1-1v-15.5a1 1 0 0 1 1-1Z" />
+    <path d="M14.5 3.5v4.5h4.5" />
+    <path d="m8.7 13.3 2.3 2.3 4.3-4.8" />
+  </svg>
+)
+
 export const PeopleIcon = () => (
   <svg {...base}>
     <circle cx="9" cy="8" r="3.2" />

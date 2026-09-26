@@ -1212,3 +1212,78 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
   margin-bottom: 22px;
 }
 .waiting b { color: var(--dim); font-weight: 500; }
+
+/* -- the reckoning -------------------------------------------------------- */
+
+.reck-headline {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 26px;
+  letter-spacing: -0.01em;
+  line-height: 1.4;
+  margin: 0 0 30px;
+  max-width: 60ch;
+}
+
+.reck-secondary { opacity: 0.72; }
+
+.reck-row {
+  padding: 16px 14px;
+  border-top: 1px solid var(--line);
+}
+.reck-row:first-of-type { border-top: none; }
+
+.reck-row blockquote {
+  margin: 0 0 8px;
+  padding-left: 11px;
+  border-left: 1px solid var(--line-lit);
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--bone);
+  font-style: italic;
+}
+.reck-row blockquote.no-quote { color: var(--faint); }
+.no-quote-mark {
+  display: block;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  color: var(--faint);
+  font-style: normal;
+  margin-top: 3px;
+}
+
+.reck-para { font-size: 13px; color: var(--dim); margin: 0 0 8px; }
+
+.reck-meta {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 7px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--faint);
+  margin-bottom: 10px;
+}
+.reck-meta a { display: inline-flex; align-items: center; gap: 5px; color: var(--dim); }
+.reck-meta a:hover { color: var(--bone); }
+.reck-meta .av { width: 16px; height: 16px; font-size: 7px; margin: 0; }
+
+.reck-evidence { margin-bottom: 8px; }
+.reck-evidence-label {
+  display: block;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.03em;
+  color: var(--faint);
+  margin-bottom: 4px;
+}
+.reck-evidence.closed .reck-evidence-label { color: var(--sage); }
+.reck-evidence.candidate .reck-evidence-label { color: var(--amber); }
+.reck-evidence blockquote {
+  margin: 0 0 4px;
+  padding-left: 11px;
+  border-left: 1px solid var(--line-lit);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--dim);
+  font-style: italic;
+}
+.reck-evidence-when { font-family: var(--mono); font-size: 9px; color: var(--faint); }

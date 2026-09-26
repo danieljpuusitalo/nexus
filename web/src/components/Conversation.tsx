@@ -71,7 +71,13 @@ export default function Conversation({
           )}
         </div>
 
-        {text ? (
+        {c.capture === 'not_captured' ? (
+          /* The transcript was noise, not signal. A fluent summary rendered
+             over it would read as something we know, and we do not. */
+          <p className="quiet">
+            {c.capture_note || 'Not captured well enough to read.'}
+          </p>
+        ) : text ? (
           <div className={isMachine ? 'machine' : undefined}>
             {isMachine && (
               <div className="machine-mark" title={`Written by ${c.generated_model ?? 'a model'}`}>
