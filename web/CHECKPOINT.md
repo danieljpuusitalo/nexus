@@ -1,4 +1,7 @@
-# Checkpoint, 6 September 2026
+# Checkpoint, 26 September 2026
+
+The development path lives in `docs/ROADMAP.md` (phases 0–6). This file says
+where the build stands against it; the roadmap says why the order is what it is.
 
 Where the prototype stands and what to pick up next. Read `ETHOS.md` first if
 you are new to this; it carries the argument the whole thing is built on.
@@ -17,7 +20,7 @@ browser windows.
 ## What exists
 
 A standalone web app in `web/`, sharing nothing with the Electron renderer.
-Five surfaces, reachable from the rail:
+Six surfaces, reachable from the rail (hash router: `/#/reckoning`):
 
 | Surface | What it answers |
 |---|---|
@@ -26,6 +29,7 @@ Five surfaces, reachable from the rail:
 | **Companies** (`/company/:slug`) | Where are we with this organisation |
 | **Open loops** (`/loops`) | What did anyone promise and not do |
 | **Ways to help** (`/help`) | Who could I connect, and who have I under-repaid |
+| **The reckoning** (`/reckoning`) | What have I promised, oldest first, and is there evidence I did it |
 | **Who is this?** (`/review`) | The only thing the product asks of you |
 
 Plus: cmd-K palette, `/` to focus the filter, draft drawer shared by loops and
@@ -75,26 +79,58 @@ Open and unresolved:
 - **Companies are matched on an exact string.** "Globex Pack" and "Globex Pack B.V."
   are two organisations today.
 
-## Next, in the order that seemed wisest
+## Built on 26 September (roadmap phases 0–4)
 
-1. **Nothing.** Sit with the four stages first and decide whether the value
-   proposition is convincing before more surface gets added. The prototype is
-   at the point where more screens will hide problems rather than reveal them.
-2. **Extraction against a real transcript.** The open question is no longer a
-   screen: it is whether commitment and signal extraction survives contact with
-   a live Tactiq export. Best guess is that it works on Fathom-style summaries
-   and struggles on raw ASR, which would make the enhancement layer
-   load-bearing rather than optional. Cheap to test.
-3. **Persist dismissals and decide the multi-person rule.** Both are small and
-   both are currently papering over a real decision.
+- **Verify covers the prototype.** `web/` has `typecheck` and `test` scripts;
+  CI runs a `web` job and triggers on every branch and PR, not `main` only.
+- **Extraction exists** (`src/main/commitments.ts`): forced tool call, every
+  commitment must quote the transcript verbatim or it is dropped, versioned by
+  model + `PROMPT_HASH`. A deterministic `assessCapture` pre-check marks
+  unreadable transcripts `not_captured` before any spend (volume, fragment
+  ratio, and words-per-minute against the turn timestamps).
+- **Closure** (`src/main/commitment-closure.ts`): evidence is `closed`,
+  `candidate` or `none`, and `none` means *no evidence found*, never *not done*.
+- **Snapshot builder** (`src/main/snapshot-builder.ts`,
+  `scripts/build-snapshot.ts`) folds meetings + extractions into the exact shape
+  `load()` reads. `load()` prefers a gitignored `src/data/snapshot.local.json`
+  when present, so real data never enters the repo; no component changed.
+- **The reckoning** (`/reckoning`): headline from counts, "You owe" oldest first,
+  every item shows its quote and its evidence state.
+- **Proved on two real Tactiq exports**, extracted in-session (no API spend),
+  outputs kept outside the repo. Call A (34 min): 4 commitments kept, 1 dropped
+  as low confidence. Call B (header says 4 min, timestamps run to 29:38, 150
+  words of filler): correctly `not_captured`, and that person's page now says "Not known"
+  instead of "Nothing outstanding".
+
+Warning: `npm run build` on a machine with `snapshot.local.json` bundles the real
+data into `dist/`. `dist/` is gitignored; never deploy a locally built bundle.
+
+## Next
+
+Blocked on Daniel, in order of what unblocks most:
+
+1. **The corpus decision + an API key.** Phase 5 (extraction over the backlog)
+   is a paid batch run and needs a yes and a key. Gmail search as the corpus
+   and as the closure-evidence source both need his explicit say-so.
+2. **Should the reckoning become the landing screen?** It leads the rail now;
+   `/` is still Today. Changing the landing is a surface decision.
+3. **Real names in the committed sample** `src/data/snapshot.json`. This is a
+   public repo and the fixture carries real people and companies. Replacing it
+   with fake names is easy; whether history needs rewriting is his call.
+
+Unblocked and next for any session:
+
+- Past-due marker on reckoning items (Today counts "1 past due"; the reckoning
+  card does not show which).
+- Persist dismissals and decide the multi-person rule (unchanged from before).
 
 Deliberately not building: a network graph, a pipeline, a scoring engine,
 manual enrichment. Each is easy and each pulls back toward being a CRM.
 
-## The engine, untouched
+## The engine
 
-`src/main/` in the parent repo still holds the real thing: parser, person
-resolver, calendar matching, ledger writes, summariser. 154 tests, all passing.
-It is not connected to this prototype and does not need to be yet. When it is,
-only `load()` in `web/src/lib/data.ts` changes; no component knows where its
-data came from.
+`src/main/` holds the parser, person resolver, calendar matching, ledger
+writes, summariser, and now extraction, closure and the snapshot builder.
+`npm test` at the root runs them all. The prototype reads engine output only
+through `load()` in `web/src/lib/data.ts`; no component knows where its data
+came from.
