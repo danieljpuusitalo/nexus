@@ -18,6 +18,10 @@ extension/dist/
 .env.local
 .env.*.local
 *.local
+.local/
+
+# Real snapshots and extractions (docs/ROADMAP.md Phase 3): never in this public repo
+web/src/data/*.local.json
 
 # OS files
 .DS_Store
