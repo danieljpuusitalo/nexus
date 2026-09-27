@@ -112,7 +112,10 @@ data into `dist/`. `dist/` is gitignored; never deploy a locally built bundle.
   quote says "No quote on record" instead of quoting its paraphrase.
 - **No real names in the tree.** Fixtures, seeds, tests, comments and docs use
   obvious fakes and `*.example` addresses. LICENSE keeps its holder; GitHub
-  URLs keep the account name. Earlier commits still hold the old strings.
+  URLs keep the account name. History was rewritten the same day
+  (git-filter-repo, force-push of both branches and `v1.1.0`), so no commit
+  holds them either. Every SHA before 27 September on this repo is dead.
+  Commit authorship was left as it was.
 - **First real evidence pass.** A read-only Gmail search of sent mail gave
   Call A's four promises closure evidence, kept outside the repo in
   `.nexus-local/`. Two closed with verbatim quotes. The other two stay open,
@@ -123,8 +126,9 @@ data into `dist/`. `dist/` is gitignored; never deploy a locally built bundle.
 
 Blocked on Daniel:
 
-1. **Rewrite git history?** Removing the old names from history needs a
-   force-push on a public repo, and GitHub may cache the old SHAs anyway.
+1. **GitHub still serves the old commits by SHA** until its own garbage
+   collection runs. Purging them now takes a request to GitHub Support
+   ("remove cached views / unreachable commits"), which only the owner can file.
 2. **Phase 5, the backlog run.** The Gmail pass ran in-session at no cost.
    Extraction over the full library is a paid batch run and still needs a yes
    and a key.
