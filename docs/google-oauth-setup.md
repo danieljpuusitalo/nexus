@@ -35,13 +35,13 @@ Internal is outside that clause.
 
 **Step 0 is the one that matters.** Internal is only offered when the Cloud
 project belongs to a Google Workspace organisation. Sign in to
-<https://console.cloud.google.com> as **alex@example.com** — not a personal
+<https://console.cloud.google.com> as **you@your-domain.example** — not a personal
 Gmail. If you create the project under a personal account, Internal is greyed
 out and you have to migrate the project into the org afterwards
 (`gcloud beta projects move`), which needs Project Mover on the org.
 
 Confirm before continuing: the account chip, top right, must read
-`alex@example.com`.
+`you@your-domain.example`.
 
 1. **Create the project.** Project picker → New Project → name it `nexus`.
    Under "Location" it should show `your-domain.example` as the organisation, not "No

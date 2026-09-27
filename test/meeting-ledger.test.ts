@@ -330,11 +330,11 @@ describe('calendar-scoped resolution', () => {
   it('treats an attendee who is the user as self, even under another address', () => {
     addEvent({
       attendees_json: JSON.stringify([
-        { email: 'alex@example.com', displayName: 'Daniel U' },
+        { email: 'alex@example.com', displayName: 'Alex U' },
         { email: 'david@one.example', displayName: 'David Smith' },
       ]),
     })
-    const r = recordMeeting(db, meeting({ participants: [{ name: 'Daniel U' }] }), SELF)
+    const r = recordMeeting(db, meeting({ participants: [{ name: 'Alex U' }] }), SELF)
     expect(r.participants[0].isSelf).toBe(true)
   })
 

@@ -37,11 +37,11 @@ describe('extractDate', () => {
 describe('looksLikeName', () => {
   it('accepts ordinary names', () => {
     expect(looksLikeName('Alice Smith')).toBe(true)
-    expect(looksLikeName('Daniel')).toBe(true)
+    expect(looksLikeName('Alex')).toBe(true)
   })
 
   it('accepts Dutch/German particles', () => {
-    expect(looksLikeName('Daniel van der Berg')).toBe(true)
+    expect(looksLikeName('Alex van der Berg')).toBe(true)
   })
 
   it('rejects transcript section headers', () => {

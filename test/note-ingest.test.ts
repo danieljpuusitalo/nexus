@@ -294,7 +294,7 @@ describe('matchNoteToContacts', () => {
 
   it('excludes the user themselves', () => {
     db.prepare('INSERT INTO contacts (first_name, last_name, email) VALUES (?,?,?)').run(
-      'Daniel', 'Example', 'alex@example.com'
+      'Alex', 'Example', 'alex@example.com'
     )
     db.prepare("INSERT INTO settings (key, value) VALUES ('google_email', 'alex@example.com')").run()
     const note = parseMeetingNote(
@@ -310,7 +310,7 @@ describe('matchNoteToContacts', () => {
   // was filed as an attendee of every one of their own meetings.
   it('excludes the user by NAME when the note carries no emails', () => {
     db.prepare('INSERT INTO contacts (first_name, last_name, email) VALUES (?,?,?)').run(
-      'Daniel', 'Example', ''
+      'Alex', 'Example', ''
     )
     db.prepare('INSERT INTO contacts (first_name, last_name, email) VALUES (?,?,?)').run(
       'Dana', 'Marsh', ''
@@ -323,7 +323,7 @@ describe('matchNoteToContacts', () => {
 
   it('infers the user\'s name from the connected Google account', () => {
     db.prepare('INSERT INTO contacts (first_name, last_name, email) VALUES (?,?,?)').run(
-      'Daniel', 'Example', 'alex@example.com'
+      'Alex', 'Example', 'alex@example.com'
     )
     db.prepare("INSERT INTO settings (key, value) VALUES ('google_email', 'alex@example.com')").run()
     const self = getSelfIdentifiers(db)

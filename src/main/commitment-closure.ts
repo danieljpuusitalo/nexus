@@ -32,7 +32,7 @@ export interface EvidenceItem {
   kind: 'conversation' | 'email'
   /** ISO datetime. */
   at: string
-  /** True when Daniel is the sender/speaker of this evidence. */
+  /** True when the user is the sender/speaker of this evidence. */
   from_me: boolean
   participants: string[]
   text: string

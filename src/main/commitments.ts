@@ -178,8 +178,8 @@ function quoteFoundIn(quote: string, source: string): boolean {
 /**
  * `owner_name` fuzzy-matches `selfName` — either the full name or just the
  * first name, case-insensitively — when the person making the commitment is
- * the user themself. Transcripts label people inconsistently ("Daniel",
- * "Alex Example", "daniel"), so an exact-string match would silently
+ * the user themself. Transcripts label people inconsistently ("Alex",
+ * "Alex Example", "alex"), so an exact-string match would silently
  * misfile most of them as 'them'.
  */
 function matchesSelf(name: string, selfName: string): boolean {
