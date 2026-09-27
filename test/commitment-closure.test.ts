@@ -76,6 +76,15 @@ describe('closureCandidates', () => {
     expect(closureCandidates(commitment(), [unrelated], SELF)).toHaveLength(0)
   })
 
+  it('matches a silent-e verb against its -ing form ("introduce" / "introducing")', () => {
+    const c = commitment({ paraphrase: 'Introduce Sam to Initech' })
+    const intro = evidence({ text: 'Hi Jordan, introducing you to Sam, founder of Globex.' })
+    expect(closureCandidates(c, [intro], SELF)).toHaveLength(1)
+    // Negative control: the name alone is one word of overlap, which is not enough.
+    const nameOnly = evidence({ text: 'Hi Jordan, meet Sam, founder of Globex.' })
+    expect(closureCandidates(c, [nameOnly], SELF)).toHaveLength(0)
+  })
+
   it('returns no candidates when a "me" commitment has no counterparty to match against', () => {
     const c = commitment({ counterparty: null })
     expect(closureCandidates(c, [evidence()], SELF)).toHaveLength(0)

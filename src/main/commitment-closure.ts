@@ -99,11 +99,15 @@ const STOPWORDS = new Set([
   'would', 'should', 'what', 'when', 'there', 'here', 'up', 'out', 'over',
 ])
 
-/** Trailing -ing/-ed/-s stripped, so "sending"/"sent"/"sends" overlap without a real stemmer. */
+/**
+ * Trailing -ing/-ed/-s stripped, so "sending"/"sent"/"sends" overlap without a real stemmer.
+ * A final silent -e goes too, or "introduce" and "introducing" never meet.
+ */
 function stem(word: string): string {
   if (word.length > 5 && word.endsWith('ing')) return word.slice(0, -3)
   if (word.length > 4 && word.endsWith('ed')) return word.slice(0, -2)
-  if (word.length > 3 && word.endsWith('s') && !word.endsWith('ss')) return word.slice(0, -1)
+  if (word.length > 3 && word.endsWith('s') && !word.endsWith('ss')) word = word.slice(0, -1)
+  if (word.length > 5 && word.endsWith('e')) return word.slice(0, -1)
   return word
 }
 
