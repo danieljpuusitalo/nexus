@@ -81,7 +81,7 @@ export default function Person() {
         <Stage />
 
         <div className="crumb">
-          <Link to="/">People</Link>
+          <Link to="/people">People</Link>
           <span>/</span>
           <span style={{ color: 'var(--dim)' }}>{person.name}</span>
         </div>

@@ -22,11 +22,11 @@ function Rail() {
     <nav className="rail">
       <div className="glyph">N</div>
 
-      <NavLink to="/reckoning" className={cls}>
+      <NavLink to="/" end className={cls}>
         <ReckoningIcon />
         <span className="tip">The reckoning</span>
       </NavLink>
-      <NavLink to="/" end className={cls}>
+      <NavLink to="/today" className={cls}>
         <TodayIcon />
         <span className="tip">Today</span>
       </NavLink>
@@ -70,6 +70,7 @@ function Shell() {
   // so a people list beside them would only be noise.
   const solo =
     location.pathname === '/' ||
+    location.pathname.startsWith('/today') ||
     location.pathname.startsWith('/review') ||
     location.pathname.startsWith('/loops') ||
     location.pathname.startsWith('/help') ||
@@ -101,8 +102,10 @@ function Shell() {
       <Rail />
       {!solo && <Index mode={mode} setMode={setMode} />}
       <Routes>
+        {/* The reckoning is the landing screen: the product is the record of what you promised. */}
+        <Route path="/" element={<Reckoning />} />
         <Route path="/reckoning" element={<Reckoning />} />
-        <Route path="/" element={<Today />} />
+        <Route path="/today" element={<Today />} />
         <Route path="/people" element={<Person />} />
         <Route path="/people/:id" element={<Person />} />
         <Route path="/company/:slug" element={<Company />} />

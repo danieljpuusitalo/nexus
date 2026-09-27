@@ -34,12 +34,9 @@ function headline(promised: number, open: number, over90: number): string {
 
 function Quote({ l }: { l: OpenLoop }) {
   if (l.quote) return <blockquote>&ldquo;{l.quote}&rdquo;</blockquote>
-  return (
-    <blockquote className="no-quote">
-      &ldquo;{l.text}&rdquo;
-      <span className="no-quote-mark">no quote: sample data</span>
-    </blockquote>
-  )
+  // No quote marks around a paraphrase: it would read as something said aloud.
+  // The paraphrase already renders below; this line only says what is missing.
+  return <span className="no-quote-mark">No quote on record</span>
 }
 
 function Evidence({ l }: { l: OpenLoop }) {
