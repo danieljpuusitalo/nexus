@@ -1,4 +1,4 @@
-# Checkpoint, 26 September 2026
+# Checkpoint, 27 September 2026
 
 The development path lives in `docs/ROADMAP.md` (phases 0–6). This file says
 where the build stands against it; the roadmap says why the order is what it is.
@@ -105,20 +105,34 @@ Open and unresolved:
 Warning: `npm run build` on a machine with `snapshot.local.json` bundles the real
 data into `dist/`. `dist/` is gitignored; never deploy a locally built bundle.
 
+## Done on 27 September
+
+- **The reckoning is the landing screen.** `/` opens it; Today moved to
+  `/today`; `/reckoning` stays as an alias. A commitment with no recorded
+  quote says "No quote on record" instead of quoting its paraphrase.
+- **No real names in the tree.** Fixtures, seeds, tests, comments and docs use
+  obvious fakes and `*.example` addresses. LICENSE keeps its holder; GitHub
+  URLs keep the account name. Earlier commits still hold the old strings.
+- **First real evidence pass.** A read-only Gmail search of sent mail gave
+  Call A's four promises closure evidence, kept outside the repo in
+  `.nexus-local/`. Two closed with verbatim quotes. The other two stay open,
+  and the mail agrees. The pass found a closure bug: "introduce" never matched
+  "introducing". Fixed, with a negative control.
+
 ## Next
 
-Blocked on Daniel, in order of what unblocks most:
+Blocked on Daniel:
 
-1. **The corpus decision + an API key.** Phase 5 (extraction over the backlog)
-   is a paid batch run and needs a yes and a key. Gmail search as the corpus
-   and as the closure-evidence source both need his explicit say-so.
-2. **Should the reckoning become the landing screen?** It leads the rail now;
-   `/` is still Today. Changing the landing is a surface decision.
-3. **Real names in the committed sample** `src/data/snapshot.json`. This is a
-   public repo and the fixture carries real people and companies. Replacing it
-   with fake names is easy; whether history needs rewriting is his call.
+1. **Rewrite git history?** Removing the old names from history needs a
+   force-push on a public repo, and GitHub may cache the old SHAs anyway.
+2. **Phase 5, the backlog run.** The Gmail pass ran in-session at no cost.
+   Extraction over the full library is a paid batch run and still needs a yes
+   and a key.
 
 Unblocked and next for any session:
+
+- Evidence ingestion as code: turn the manual Gmail step into an adapter that
+  emits `EvidenceItem`s, treating mail bodies as untrusted data.
 
 - Past-due marker on reckoning items (Today counts "1 past due"; the reckoning
   card does not show which).
